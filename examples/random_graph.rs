@@ -1,13 +1,16 @@
 use forceatlas2::*;
 use plotters::prelude::*;
 use rand::Rng;
+use plotters::style::RGBColor;
+// use plotters::style::RGBAColor;
+use plotters::style::Color;
 
-const EDGES: usize = 50_000;
-const NODES: usize = 5_000;
+const EDGES: usize = 10_000;
+const NODES: usize = 2_000;
 
 const SIZE: (u32, u32) = (1024, 1024);
 
-const ITERATIONS: u32 = 50;
+const ITERATIONS: u32 = 200;
 const ANIM_MODE: bool = false;
 
 fn main() {
@@ -19,7 +22,7 @@ fn main() {
 			if edge.0 == edge.1 {
 				(edge.0, (edge.1 + 1) % NODES)
 			} else {
-				edge
+				edge 	
 			}
 		})
 		.collect();
@@ -28,13 +31,13 @@ fn main() {
 		NODES,
 		Settings {
 			dimensions: 2,
-			dissuade_hubs: true,
+			dissuade_hubs: false,
 			kg: 1.0,
-			kr: 10.0,
+			kr: 0.1,
 			lin_log: false,
 			prevent_overlapping: None,
 			strong_gravity: false,
-			barnes_hut: Some(0.9),
+			barnes_hut: None,
 		},
 	);
 
@@ -116,7 +119,7 @@ fn draw_graph(layout: &Layout<f64>, iteration: u32) {
 						}
 					},
 				],
-				Into::<ShapeStyle>::into(&BLACK).filled(),
+				Into::<ShapeStyle>::into(&RGBColor(5,5,5).mix(0.05)).filled(),
 			))
 			.unwrap();
 		}

@@ -347,7 +347,7 @@ where
 						}
 					}
 				} else {
-					// -- --- --
+					// -- ---    <----------------- TODO APPLIQUER UN FACTEUR OU DIVISER PAR LA MASSE
 					for (n1, n2) in self.edges.iter() {
 						let n1_speed = self.speeds.get_mut(*n1);
 						let n1_pos = self.points.get(*n1).clone();
@@ -355,7 +355,8 @@ where
 						let di = di_v.as_mut_slice();
 						for i in 0usize..self.settings.dimensions {
 							di[i] -= n1_pos[i].clone();
-							n1_speed[i] += di[i].clone();
+							di[i] /= T::from(2); // comme ceci par exemple
+							n1_speed[i] += di[i].clone(); 
 						}
 						let n2_speed = self.speeds.get_mut(*n2);
 						for i in 0usize..self.settings.dimensions {
@@ -448,12 +449,16 @@ where
 					if d2.is_zero() {
 						continue;
 					}
-					let d = d2.sqrt();
+					let d = d2.clone().sqrt();
+
+					// <------------- attention à m1 m2 pour la répulsion
 
 					let f = T::from(
 						(unsafe { self.nodes.get_unchecked(n1) }.degree + 1)
 							* (unsafe { self.nodes.get_unchecked(n2) }.degree + 1),
 					) / d * self.settings.kr.clone();
+
+					// let f = self.settings.kr.clone() / d2;
 
 					let n1_speed = self.speeds.get_mut(n1);
 					for i in 0usize..self.settings.dimensions {
@@ -470,7 +475,7 @@ where
 
 	fn apply_forces(&mut self) {
 		for (pos, speed) in self.points.points.iter_mut().zip(self.speeds.points.iter()) {
-			*pos += speed.clone();
+			*pos += speed.clone() / T::from(10);
 		}
 	}
 }
