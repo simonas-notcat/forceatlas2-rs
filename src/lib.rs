@@ -22,6 +22,8 @@ pub struct Settings<T: Coord> {
 	pub kr: T,
 	/// Logarithmic attraction
 	pub lin_log: bool,
+	/// Scaling of the force before displacement (small is slow)
+	pub scaling_ratio: T,
 	/// Prevent node overlapping for a prettier graph (node_size, kr_prime).
 	///
 	/// `node_size` is the radius around a node where the repulsion coefficient is `kr_prime`.
@@ -45,6 +47,7 @@ impl<T: Coord> Default for Settings<T> {
 			ka: T::from(0.5),
 			kg: T::one(),
 			kr: T::one(),
+			scaling_ratio: T::one(),
 			lin_log: false,
 			prevent_overlapping: None,
 			strong_gravity: false,
@@ -486,7 +489,8 @@ where
 	}
 
 	fn apply_forces(&mut self) {
-		for (pos, old_speed, speed) in izip!(
+		for (node, pos, old_speed, speed) in izip!(
+			self.nodes.iter(),
 			self.points.iter_mut(),
 			self.speeds.iter(),
 			self.old_speeds.iter(),
@@ -498,10 +502,10 @@ where
 				swinging2 += (old_speed[i].clone() - speed[i].clone()).pow_n(2u32);
 				traction2 += (old_speed[i].clone() + speed[i].clone()).pow_n(2u32);
 			}
-			let factor =
-				(T::one() + traction2.sqrt()).log2() / (T::one() + swinging2.sqrt().sqrt()); // where is natural logarithm ?
+			let factor = self.settings.scaling_ratio.clone() * (T::one() + traction2.sqrt()).ln()
+				/ (T::one() + swinging2.sqrt().sqrt())
+				/ T::from(node.degree + 1);
 			for i in 0usize..self.settings.dimensions {
-				// pos[i] += speed[i].clone(); // factor 1
 				pos[i] += factor.clone() * speed[i].clone(); // adaptive convergence
 			}
 		}

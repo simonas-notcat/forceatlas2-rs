@@ -4,7 +4,7 @@ use std::io::BufRead;
 
 const SIZE: (u32, u32) = (1024, 1024);
 
-const ITERATIONS: u32 = 200;
+const ITERATIONS: u32 = 500;
 const ANIM_MODE: bool = true;
 const DRAW_EDGES: bool = true;
 
@@ -46,9 +46,10 @@ fn main() {
 		Settings {
 			dimensions: 2,
 			dissuade_hubs: false,
-			ka: 0.003,
-			kg: 0.0001,
-			kr: 0.004,
+			ka: 100.0,
+			kg: 0.1,
+			kr: 0.00001,
+			scaling_ratio: 0.005,
 			lin_log: false,
 			prevent_overlapping: None,
 			strong_gravity: false,
@@ -160,10 +161,14 @@ fn draw_graph(layout: &Layout<f64>, iteration: u32) {
 	root.draw(&Text::new(
 		format!(
 			"Parameters: ka: {} kg: {} kr: {} Smooth: true, Iteration: {}, scale: {}",
-			layout.settings.ka, layout.settings.kg, layout.settings.kr, iteration, 1.0/factor
+			layout.settings.ka,
+			layout.settings.kg,
+			layout.settings.kr,
+			iteration,
+			512.0 / factor // relative to layout size
 		),
 		(5, 5),
-		("sans-serif", 20.0).into_font(),
+		("sans-serif", 24.0).into_font(),
 	))
 	.unwrap();
 }
