@@ -45,9 +45,9 @@ fn main() {
 		Settings {
 			dimensions: 2,
 			dissuade_hubs: false,
-			ka: 0.5,
-			kg: 1.0,
-			kr: 0.1,
+			ka: 0.01,
+			kg: 0.001,
+			kr: 0.002,
 			lin_log: false,
 			prevent_overlapping: None,
 			strong_gravity: false,
@@ -99,7 +99,7 @@ fn draw_graph(layout: &Layout<f64>, iteration: u32) {
 			factors.0
 		}
 	};
-	println!("size:  {:?}", graph_size);
+	// println!("size:  {:?}", graph_size);
 	println!("scale: {}", factor);
 
 	let path = if ANIM_MODE {

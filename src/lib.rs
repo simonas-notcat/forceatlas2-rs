@@ -88,7 +88,8 @@ where
 				points: {
 					let mut rng = rand::thread_rng();
 					(0..nb_nodes)
-						.flat_map(|_| util::sample_unit_nsphere(&mut rng, settings.dimensions))
+						// .flat_map(|_| util::sample_unit_nsphere(&mut rng, settings.dimensions)) // unit sphere
+						.flat_map(|_| util::sample_unit_ncube(&mut rng, settings.dimensions)) // unit cube
 						.collect()
 				},
 			},
@@ -352,7 +353,7 @@ where
 						}
 					}
 				} else {
-					// -- --- --
+					// -- --- -- DEFAULT attraction
 					for (n1, n2) in self.edges.iter() {
 						let n1_speed = self.speeds.get_mut(*n1);
 						let n1_pos = self.points.get(*n1).clone();
@@ -386,6 +387,7 @@ where
 				}
 			}
 		} else {
+			// DEFAULT gravity
 			for (n, pos, speed) in izip!(
 				self.nodes.iter(),
 				self.points.iter(),
@@ -440,7 +442,7 @@ where
 					}
 				}
 			}
-		} else {
+		} else { // DEFAULT repulsion
 			for n1 in 0..self.nodes.len() - 1 {
 				let n1_pos = self.points.get(n1);
 				for n2 in n1 + 1..self.nodes.len() {
@@ -452,14 +454,13 @@ where
 						d2 += di[i].clone().pow_n(2u32);
 					}
 					if d2.is_zero() {
-						continue;
+						continue; // n1 and n2 are superposed (usually n1 is n2)
 					}
-					let d = d2.sqrt();
 
 					let f = T::from(
 						(unsafe { self.nodes.get_unchecked(n1) }.degree + 1)
 							* (unsafe { self.nodes.get_unchecked(n2) }.degree + 1),
-					) / d * self.settings.kr.clone();
+					) / d2 * self.settings.kr.clone();
 
 					let n1_speed = self.speeds.get_mut(n1);
 					for i in 0usize..self.settings.dimensions {
