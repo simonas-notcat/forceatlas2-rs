@@ -6,6 +6,7 @@ const SIZE: (u32, u32) = (1024, 1024);
 
 const ITERATIONS: u32 = 200;
 const ANIM_MODE: bool = true;
+const DRAW_EDGES: bool = true;
 
 fn main() {
 	let file = std::fs::File::open(
@@ -45,9 +46,9 @@ fn main() {
 		Settings {
 			dimensions: 2,
 			dissuade_hubs: false,
-			ka: 0.01,
-			kg: 0.001,
-			kr: 0.002,
+			ka: 0.003,
+			kg: 0.0001,
+			kr: 0.004,
 			lin_log: false,
 			prevent_overlapping: None,
 			strong_gravity: false,
@@ -100,7 +101,7 @@ fn draw_graph(layout: &Layout<f64>, iteration: u32) {
 		}
 	};
 	// println!("size:  {:?}", graph_size);
-	println!("scale: {}", factor);
+	// println!("scale: {}", factor);
 
 	let path = if ANIM_MODE {
 		format!("target/graph-{}.png", iteration)
@@ -110,7 +111,8 @@ fn draw_graph(layout: &Layout<f64>, iteration: u32) {
 	let root = BitMapBackend::new(&path, SIZE).into_drawing_area();
 	root.fill(&WHITE).unwrap();
 
-	if !ANIM_MODE {
+	// draw edges
+	if DRAW_EDGES {
 		for (h1, h2) in layout.edges.iter() {
 			root.draw(&PathElement::new(
 				vec![
@@ -133,12 +135,13 @@ fn draw_graph(layout: &Layout<f64>, iteration: u32) {
 						}
 					},
 				],
-				Into::<ShapeStyle>::into(&BLACK).filled(),
+				Into::<ShapeStyle>::into(&RGBColor(5, 5, 5).mix(0.05)).filled(),
 			))
 			.unwrap();
 		}
 	}
 
+	// draw nodes
 	for pos in layout.points.iter() {
 		root.draw(&Circle::new(
 			unsafe {
@@ -152,4 +155,15 @@ fn draw_graph(layout: &Layout<f64>, iteration: u32) {
 		))
 		.unwrap();
 	}
+
+	// draw text
+	root.draw(&Text::new(
+		format!(
+			"Parameters: ka: {} kg: {} kr: {} Smooth: true, Iteration: {}, scale: {}",
+			layout.settings.ka, layout.settings.kg, layout.settings.kr, iteration, 1.0/factor
+		),
+		(5, 5),
+		("sans-serif", 20.0).into_font(),
+	))
+	.unwrap();
 }

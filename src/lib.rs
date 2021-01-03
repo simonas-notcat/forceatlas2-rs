@@ -61,6 +61,7 @@ pub struct Layout<T: Coord> {
 	pub points: PointList<T>,
 	pub settings: Settings<T>,
 	speeds: PointList<T>,
+	old_speeds: PointList<T>, // speed at last iteration step (used for adaptive convergence)
 }
 
 impl<'a, T: Coord + std::fmt::Debug> Layout<T>
@@ -80,6 +81,10 @@ where
 			nodes.get_mut(*n2).unwrap().degree += 1;
 		}
 		let nb = nb_nodes * settings.dimensions;
+		let null_coords = PointList {
+			dimensions: settings.dimensions,
+			points: (0..nb).map(|_| T::zero()).collect(),
+		};
 		Self {
 			nodes,
 			edges,
@@ -93,10 +98,8 @@ where
 						.collect()
 				},
 			},
-			speeds: PointList {
-				dimensions: settings.dimensions,
-				points: (0..nb).map(|_| T::zero()).collect(),
-			},
+			speeds: null_coords.clone(),
+			old_speeds: null_coords,
 			settings,
 		}
 	}
@@ -123,6 +126,10 @@ where
 			nodes.get_mut(*n2).unwrap().degree += 1;
 		}
 		let nb = nodes.len() * settings.dimensions;
+		let null_coords = PointList {
+			dimensions: settings.dimensions,
+			points: (0..nb).map(|_| T::zero()).collect(),
+		};
 		Self {
 			nodes,
 			edges,
@@ -130,10 +137,8 @@ where
 				dimensions: settings.dimensions,
 				points,
 			},
-			speeds: PointList {
-				dimensions: settings.dimensions,
-				points: (0..nb).map(|_| T::zero()).collect(),
-			},
+			speeds: null_coords.clone(),
+			old_speeds: null_coords,
 			settings,
 		}
 	}
@@ -148,7 +153,11 @@ where
 	}
 
 	fn init_iteration(&mut self) {
-		for speed in self.speeds.points.iter_mut() {
+		for (old_speed, speed) in izip!(
+			self.old_speeds.points.iter_mut(),
+			self.speeds.points.iter_mut(),
+		) {
+			*old_speed = speed.clone(); // keep memory of old speed
 			*speed = T::zero();
 		}
 	}
@@ -442,7 +451,8 @@ where
 					}
 				}
 			}
-		} else { // DEFAULT repulsion
+		} else {
+			// DEFAULT repulsion
 			for n1 in 0..self.nodes.len() - 1 {
 				let n1_pos = self.points.get(n1);
 				for n2 in n1 + 1..self.nodes.len() {
@@ -476,8 +486,24 @@ where
 	}
 
 	fn apply_forces(&mut self) {
-		for (pos, speed) in self.points.points.iter_mut().zip(self.speeds.points.iter()) {
-			*pos += speed.clone();
+		for (pos, old_speed, speed) in izip!(
+			self.points.iter_mut(),
+			self.speeds.iter(),
+			self.old_speeds.iter(),
+		) {
+			let mut swinging2 = T::zero(); // measure oscillations
+			let mut traction2 = T::zero(); // measure continuity
+			for i in 0usize..self.settings.dimensions {
+				// Note: consider expecting T which is Copy
+				swinging2 += (old_speed[i].clone() - speed[i].clone()).pow_n(2u32);
+				traction2 += (old_speed[i].clone() + speed[i].clone()).pow_n(2u32);
+			}
+			let factor =
+				(T::one() + traction2.sqrt()).log2() / (T::one() + swinging2.sqrt().sqrt()); // where is natural logarithm ?
+			for i in 0usize..self.settings.dimensions {
+				// pos[i] += speed[i].clone(); // factor 1
+				pos[i] += factor.clone() * speed[i].clone(); // adaptive convergence
+			}
 		}
 	}
 }
