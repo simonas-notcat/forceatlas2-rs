@@ -1,5 +1,4 @@
 #![feature(specialization)]
-#![feature(slice_split_at_unchecked)]
 #![feature(stdsimd)]
 #![feature(trait_alias)]
 #![allow(incomplete_features)]
@@ -7,6 +6,7 @@
 #![feature(core_intrinsics)]
 
 mod forces;
+mod iter;
 mod layout;
 mod util;
 
@@ -146,7 +146,7 @@ where
 		self.apply_repulsion();
 		self.apply_gravity();
 		self.apply_forces();
-		self.apply_repulsion();
+		//self.apply_repulsion(); // TODO fix that wtf
 	}
 
 	fn init_iteration(&mut self) {

@@ -1,4 +1,7 @@
-use crate::util::*;
+use crate::{iter::*, util::*};
+
+use rayon::prelude::*;
+use std::marker::PhantomData;
 
 #[derive(Clone)]
 pub struct Settings<T: Coord> {
@@ -58,4 +61,42 @@ pub struct Layout<T: Coord> {
 	pub(crate) fn_attraction: fn(&mut Self),
 	pub(crate) fn_gravity: fn(&mut Self),
 	pub(crate) fn_repulsion: fn(&mut Self),
+}
+
+impl<T: Coord> Layout<T> {
+	pub fn iter_nodes(&mut self) -> NodeIter<T> {
+		NodeIter {
+			layout: SendPtr(self.into()),
+			offset: 0,
+			_phantom: PhantomData::default(),
+		}
+	}
+}
+
+impl<T: Coord + Send> Layout<T> {
+	pub fn iter_par_nodes(
+		&mut self,
+		chunk_size: usize,
+	) -> impl Iterator<Item = impl ParallelIterator<Item = NodeParIter<T>>> {
+		let ptr = SendPtr(self.into());
+		let dimensions = self.settings.dimensions;
+		let chunk_size_d = chunk_size * dimensions;
+		(0..self.masses.len()).step_by(chunk_size).map(move |y0| {
+			let y0_d = y0 * dimensions;
+			(0..self.masses.len() - y0)
+				.into_par_iter()
+				.step_by(chunk_size)
+				.map(move |x0| {
+					let x0_d = x0 * dimensions;
+					NodeParIter {
+						end: x0_d + chunk_size_d,
+						layout: ptr,
+						n2_start: x0_d + y0_d,
+						n2_end: x0_d + y0_d + chunk_size_d,
+						offset: x0_d,
+						_phantom: PhantomData::default(),
+					}
+				})
+		})
+	}
 }

@@ -128,6 +128,24 @@ where
 	}
 }
 
+default impl<T: Send + Sync> Repulsion<T> for Layout<T>
+//forces::Forces<T>
+where
+	T: Coord + std::fmt::Debug,
+{
+	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T>) {
+		#[cfg(feature = "barnes_hut")]
+		if settings.barnes_hut.is_some() {
+			unimplemented!("Barnes-Hut only implemented for f64")
+		}
+		if settings.prevent_overlapping.is_some() {
+			repulsion::apply_repulsion_po
+		} else {
+			repulsion::apply_repulsion_parallel
+		}
+	}
+}
+
 impl Repulsion<f64> for Layout<f64> /*forces::Forces<f64>*/ {
 	fn choose_repulsion(settings: &Settings<f64>) -> fn(&mut Layout<f64>) {
 		#[cfg(feature = "barnes_hut")]
@@ -172,6 +190,8 @@ impl Repulsion<f64> for Layout<f64> /*forces::Forces<f64>*/ {
 
 impl Repulsion<f32> for Layout<f32> {
 	fn choose_repulsion(settings: &Settings<f32>) -> fn(&mut Layout<f32>) {
+		return repulsion::apply_repulsion_parallel;
+
 		if settings.prevent_overlapping.is_some() {
 			repulsion::apply_repulsion_po
 		} else {
