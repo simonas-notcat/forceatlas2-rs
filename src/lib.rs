@@ -4,7 +4,6 @@
 #![allow(incomplete_features)]
 #![feature(option_result_unwrap_unchecked)]
 #![feature(core_intrinsics)]
-#![feature(unchecked_math)]
 
 mod forces;
 mod iter;
@@ -147,7 +146,6 @@ where
 		self.apply_repulsion();
 		self.apply_gravity();
 		self.apply_forces();
-		//self.apply_repulsion(); // TODO fix that wtf
 	}
 
 	fn init_iteration(&mut self) {
