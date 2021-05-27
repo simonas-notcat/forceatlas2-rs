@@ -126,21 +126,23 @@ impl<T: Coord + Send> Layout<T> {
 		let ptr = SendPtr(self.into());
 		let dimensions = self.settings.dimensions;
 		let chunk_size_d = chunk_size * dimensions;
-		let n = self.masses.len() * dimensions;
-		(0..self.masses.len()).step_by(chunk_size).map(move |y0| {
+		let n = self.masses.len();
+		let n_d = n * dimensions;
+		(0..n).step_by(chunk_size).map(move |y0| {
 			let y0_d = y0 * dimensions;
-			(0..self.masses.len() - y0)
+			(0..n - y0)
 				.into_par_iter()
 				.step_by(chunk_size)
 				.map(move |x0| {
 					let x0_d = x0 * dimensions;
 					NodeParSimdIter {
-						end: (x0_d + chunk_size_d).min(n),
+						end: (x0_d + chunk_size_d).min(n_d),
 						ind: x0,
 						layout: ptr,
 						n2_start: x0_d + y0_d,
 						n2_start_ind: x0 + y0,
-						n2_end: (x0_d + y0_d + chunk_size_d).min(n),
+						n2_end: (x0_d + y0_d + chunk_size_d).min(n_d),
+						n2_end_ind: (x0 + y0 + chunk_size).min(n),
 						offset: x0_d,
 						_phantom: PhantomData::default(),
 					}
@@ -221,7 +223,13 @@ mod test {
 	#[test]
 	#[cfg(feature = "parallel")]
 	fn test_iter_par_simd_nodes() {
+		rayon::ThreadPoolBuilder::new()
+			.num_threads(1)
+			.build_global()
+			.unwrap();
+
 		for n_nodes in 1usize..32 {
+			println!("######## {} nodes", n_nodes);
 			let mut layout = Layout::<f32>::from_graph(
 				vec![],
 				Nodes::Mass((1..n_nodes + 1).map(|i| i as f32).collect()),
@@ -239,48 +247,55 @@ mod test {
 			));
 			let points = layout.points.clone();
 			let speeds = layout.speeds.clone();
-			for chunk_iter in layout.iter_par_simd_nodes::<4>(16) {
+			for (level, chunk_iter) in layout.iter_par_simd_nodes::<4>(16).enumerate() {
+				println!("level {}", level);
 				chunk_iter.for_each(|n1_iter| {
+					let n2_end = n1_iter.n2_end_ind;
 					for mut n1 in n1_iter {
+						println!("n1 {}", n1.ind);
 						for n2 in &mut n1.n2_iter {
 							let mut hits = hits.write().unwrap();
+							println!("d {} {}", n1.ind, n2.ind);
 							assert!(hits.remove(&(n1.ind, n2.ind)));
 							assert!(hits.remove(&(n1.ind, n2.ind + 1)));
 							assert!(hits.remove(&(n1.ind, n2.ind + 2)));
 							assert!(hits.remove(&(n1.ind, n2.ind + 3)));
 							assert_eq!(n1.pos, points.get(n1.ind));
-							assert_eq!(n2.pos as *const f32, points.get(n2.ind).as_ptr());
-							assert_eq!(n2.pos as *const f32, unsafe {
-								points.get(n2.ind).as_ptr().add(1)
-							});
-							assert_eq!(n2.pos as *const f32, unsafe {
-								points.get(n2.ind).as_ptr().add(2)
-							});
-							assert_eq!(n2.pos as *const f32, unsafe {
-								points.get(n2.ind).as_ptr().add(3)
-							});
-							assert_eq!(n1.speed as *const f32, speeds.get(n1.ind).as_ptr());
-							assert_eq!(n2.speed as *const f32, speeds.get(n2.ind).as_ptr());
-							assert_eq!(n2.speed as *const f32, unsafe {
-								speeds.get(n2.ind).as_ptr().add(1)
-							});
-							assert_eq!(n2.speed as *const f32, unsafe {
-								speeds.get(n2.ind).as_ptr().add(2)
-							});
-							assert_eq!(n2.speed as *const f32, unsafe {
-								speeds.get(n2.ind).as_ptr().add(3)
-							});
-							assert_eq!(*n1.mass, n1.ind as f32 + 1.);
-							assert_eq!(unsafe { *n2.mass }, n2.ind as f32 + 1.);
-							assert_eq!(unsafe { *n2.mass.add(1) }, n2.ind as f32 + 1.);
-							assert_eq!(unsafe { *n2.mass }, n2.ind as f32 + 1.);
-							assert_eq!(unsafe { *n2.mass }, n2.ind as f32 + 1.);
+							unsafe {
+								assert_eq!(*n2.pos, points.get(n2.ind)[0]);
+								assert_eq!(*n2.pos.add(1), points.get(n2.ind)[1]);
+								assert_eq!(*n2.pos.add(2), *points.get(n2.ind).get_unchecked(2));
+								assert_eq!(*n2.pos.add(3), *points.get(n2.ind).get_unchecked(3));
+								assert_eq!(*n2.pos.add(4), *points.get(n2.ind).get_unchecked(4));
+								assert_eq!(*n2.pos.add(5), *points.get(n2.ind).get_unchecked(5));
+								assert_eq!(*n2.pos.add(6), *points.get(n2.ind).get_unchecked(6));
+								assert_eq!(*n2.pos.add(7), *points.get(n2.ind).get_unchecked(7));
+								assert_eq!(*n1.speed, speeds.get(n1.ind)[0]);
+								assert_eq!(*n1.speed.add(1), speeds.get(n1.ind)[1]);
+								assert_eq!(*n2.speed, speeds.get(n2.ind)[0]);
+								assert_eq!(*n2.speed.add(1), speeds.get(n2.ind)[1]);
+								assert_eq!(*n2.speed.add(2), *speeds.get(n2.ind).get_unchecked(2));
+								assert_eq!(*n2.speed.add(3), *speeds.get(n2.ind).get_unchecked(3));
+								assert_eq!(*n2.speed.add(4), *speeds.get(n2.ind).get_unchecked(4));
+								assert_eq!(*n2.speed.add(5), *speeds.get(n2.ind).get_unchecked(5));
+								assert_eq!(*n2.speed.add(6), *speeds.get(n2.ind).get_unchecked(6));
+								assert_eq!(*n2.speed.add(7), *speeds.get(n2.ind).get_unchecked(7));
+								assert_eq!(*n1.mass, n1.ind as f32 + 1.);
+								assert_eq!(*n2.mass, n2.ind as f32 + 1.);
+								assert_eq!(*n2.mass.add(1), n2.ind as f32 + 2.);
+								assert_eq!(*n2.mass.add(2), n2.ind as f32 + 3.);
+								assert_eq!(*n2.mass.add(3), n2.ind as f32 + 4.);
+							}
 						}
 
-						for n2 in n1.n2_iter.ind
-							..(n1.n2_iter.ind + (n1.n2_iter.ind - n1.ind + 1) / 4 * 4 + 4)
-								.min(n_nodes)
-						{
+						println!("d2 {} {}", n1.n2_iter.ind, n1.ind);
+						println!(
+							"sub {} - {} = {}",
+							n1.n2_iter.ind,
+							n1.ind,
+							n1.n2_iter.ind - n1.ind
+						);
+						for n2 in n1.n2_iter.ind..n2_end {
 							let mut hits = hits.write().unwrap();
 							println!("rem {} {}", n1.ind, n2);
 							assert!(hits.remove(&(n1.ind, n2)));
@@ -288,7 +303,6 @@ mod test {
 					}
 				});
 			}
-			println!("{}", n_nodes);
 			println!("{:?}", hits);
 			assert!(hits.read().unwrap().is_empty());
 		}

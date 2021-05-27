@@ -115,7 +115,7 @@ fn main() {
 	println!("Nodes: {}", nodes);
 
 	let mut settings = Settings {
-		chunk_size: Some(256),
+		chunk_size: None,
 		dimensions: 2,
 		dissuade_hubs: false,
 		ka: 0.01,
@@ -139,7 +139,13 @@ fn main() {
 	)));
 	let computing = Arc::new(RwLock::new(false));
 	let sleep = Arc::new(RwLock::new(50u64));
-	draw_graph(layout.clone(), image.clone(), size.clone());
+	let draw_links = Arc::new(RwLock::new(DRAW_LINKS));
+	draw_graph(
+		layout.clone(),
+		image.clone(),
+		size.clone(),
+		draw_links.clone(),
+	);
 
 	thread::spawn({
 		let image = image.clone();
@@ -147,11 +153,17 @@ fn main() {
 		let layout = layout.clone();
 		let sleep = sleep.clone();
 		let size = size.clone();
+		let draw_links = draw_links.clone();
 
 		let interval = Duration::from_millis(FRAMEDUR);
 		move || loop {
 			if *computing.read().unwrap() {
-				draw_graph(layout.clone(), image.clone(), size.clone());
+				draw_graph(
+					layout.clone(),
+					image.clone(),
+					size.clone(),
+					draw_links.clone(),
+				);
 				thread::sleep(interval);
 			} else {
 				thread::sleep(std::time::Duration::from_millis(*sleep.read().unwrap()));
@@ -191,6 +203,7 @@ fn main() {
 				println!("ka <f64>   attraction");
 				println!("kg <f64>   gravity");
 				println!("kr <f64>   repulsion");
+				println!("dl         toggle draw links")
 			}
 			Some("s") => {
 				let mut computing = computing.write().unwrap();
@@ -222,6 +235,10 @@ fn main() {
 				"ka={}  kg={}  kr={}  cs={:?}",
 				settings.ka, settings.kg, settings.kr, settings.chunk_size
 			),
+			Some("dl") => {
+				let mut draw_links = draw_links.write().unwrap();
+				*draw_links = !*draw_links;
+			}
 			Some("i") => println!("{}", iters.read().unwrap()),
 			_ => println!("Unknown command"),
 		}
@@ -234,6 +251,7 @@ fn draw_graph(
 	layout: Arc<RwLock<Layout<T>>>,
 	image: Arc<RwLock<(u32, u32, Vec<u8>)>>,
 	size: Arc<RwLock<(u32, u32)>>,
+	draw_links: Arc<RwLock<bool>>,
 ) {
 	let mut image = image.write().unwrap();
 	{
@@ -280,34 +298,36 @@ fn draw_graph(
 		}
 	};
 
-	if DRAW_LINKS {
-		let link_color = RGBColor(5, 5, 5).mix(0.05);
+	if let Ok(draw_links) = draw_links.try_read() {
+		if *draw_links {
+			let link_color = RGBColor(5, 5, 5).mix(0.05);
 
-		for (h1, h2) in layout.edges.iter() {
-			root.draw(&PathElement::new(
-				vec![
-					{
-						let pos = layout.points.get(*h1);
-						unsafe {
-							(
-								((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
-								((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
-							)
-						}
-					},
-					{
-						let pos = layout.points.get(*h2);
-						unsafe {
-							(
-								((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
-								((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
-							)
-						}
-					},
-				],
-				Into::<ShapeStyle>::into(&link_color).filled(),
-			))
-			.unwrap();
+			for (h1, h2) in layout.edges.iter() {
+				root.draw(&PathElement::new(
+					vec![
+						{
+							let pos = layout.points.get(*h1);
+							unsafe {
+								(
+									((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
+									((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
+								)
+							}
+						},
+						{
+							let pos = layout.points.get(*h2);
+							unsafe {
+								(
+									((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
+									((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
+								)
+							}
+						},
+					],
+					Into::<ShapeStyle>::into(&link_color).filled(),
+				))
+				.unwrap();
+			}
 		}
 	}
 

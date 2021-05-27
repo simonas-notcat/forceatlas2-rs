@@ -245,6 +245,7 @@ mod parallel_simd {
 		pub n2_start: usize,
 		pub n2_start_ind: usize,
 		pub n2_end: usize,
+		pub n2_end_ind: usize,
 		pub offset: usize,
 		pub(crate) _phantom: PhantomData<&'a mut Layout<T>>,
 	}
@@ -279,7 +280,9 @@ mod parallel_simd {
 						ind: self.ind,
 						mass: unsafe { layout.masses.get_unchecked(self.ind) },
 						n2_iter: NodeParSimdIter2 {
-							end: self.n2_end - (self.n2_end - n2_start_ind) % N,
+							end: self.n2_end
+								- (self.n2_end - n2_start_ind * layout.settings.dimensions)
+									% (N * layout.settings.dimensions),
 							ind: n2_start_ind,
 							layout: self.layout,
 							offset: self.n2_start.max(next_offset),
@@ -341,3 +344,117 @@ mod parallel_simd {
 		}
 	}
 }
+
+/*#[cfg(all(feature = "parallel", any(target_arch = "x86", target_arch = "x86_64")))]
+mod parallel_simd_cleaner {
+	use super::*;
+
+	pub struct NodeParSimdIter<'a, T: Coord, const N: usize> {
+		pub end: usize,
+		pub ind: usize,
+		pub(crate) layout: SendPtr<Layout<T>>,
+		pub n2_end: usize,
+		pub n2_start: usize,
+		pub(crate) _phantom: PhantomData<&'a mut Layout<T>>,
+	}
+
+	pub struct NodeParSimd<'a, T: Coord, const N: usize> {
+		pub ind: usize,
+		pub mass: &'a T,
+		pub n2_iter: NodeParSimdIter2<'a, T, N>,
+		pub pos: &'a [T],
+		pub speed: *mut T,
+	}
+
+	pub struct NodeParSimdIter2<'a, T: Coord, const N: usize> {
+		pub end: usize,
+		pub ind: usize,
+		pub(crate) layout: SendPtr<Layout<T>>,
+		pub offset: usize,
+		pub(crate) _phantom: PhantomData<&'a mut Layout<T>>,
+	}
+
+	pub struct NodeParSimd2<T: Coord, const N: usize> {
+		#[cfg(test)]
+		pub ind: usize,
+		pub mass: *mut T,
+		pub pos: *mut T,
+		pub speed: *mut T,
+	}
+
+	impl<'a, T: Coord, const N: usize> Iterator for NodeParSimdIter<'a, T, N> {
+		type Item = NodeParSimd<'a, T, N>;
+
+		fn next(&mut self) -> Option<Self::Item> {
+			if self.offset < self.end {
+				Some({
+					let layout = unsafe { self.layout.0.as_mut() };
+					let next_offset = self.offset + layout.settings.dimensions;
+					let next_ind = self.ind + 1;
+					let n2_start_ind = self.n2_start_ind.max(next_ind);
+					let ret = NodeParSimd {
+						ind: self.ind,
+						mass: unsafe { layout.masses.get_unchecked(self.ind) },
+						n2_iter: NodeParSimdIter2 {
+							end: dbg!(self.n2_end - (self.n2_end - n2_start_ind) % N),
+							ind: dbg!(n2_start_ind),
+							layout: self.layout,
+							offset: self.n2_start.max(next_offset),
+							_phantom: PhantomData::default(),
+						},
+						pos: unsafe {
+							layout.points.points.get_unchecked(self.offset..next_offset)
+						},
+						speed: unsafe {
+							self.layout
+								.0
+								.as_mut()
+								.speeds
+								.points
+								.as_mut_ptr()
+								.add(self.offset)
+						},
+					};
+					self.offset = next_offset;
+					self.ind = next_ind;
+					ret
+				})
+			} else {
+				None
+			}
+		}
+	}
+
+	impl<'a, T: Coord, const N: usize> Iterator for &mut NodeParSimdIter2<'a, T, N> {
+		type Item = NodeParSimd2<T, N>;
+
+		fn next(&mut self) -> Option<Self::Item> {
+			if self.offset < self.end {
+				Some({
+					let layout = unsafe { self.layout.0.as_mut() };
+					let next_offset = self.offset + N * layout.settings.dimensions;
+					let ret = NodeParSimd2 {
+						#[cfg(test)]
+						ind: self.ind,
+						mass: unsafe { layout.masses.as_mut_ptr().add(self.ind) },
+						pos: unsafe { layout.points.points.as_mut_ptr().add(self.offset) },
+						speed: unsafe {
+							self.layout
+								.0
+								.as_mut()
+								.speeds
+								.points
+								.as_mut_ptr()
+								.add(self.offset)
+						},
+					};
+					self.offset = next_offset;
+					self.ind += N;
+					ret
+				})
+			} else {
+				None
+			}
+		}
+	}
+}*/

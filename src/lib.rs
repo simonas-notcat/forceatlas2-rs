@@ -4,6 +4,7 @@
 #![allow(incomplete_features)]
 #![feature(option_result_unwrap_unchecked)]
 #![feature(core_intrinsics)]
+#![feature(unchecked_math)]
 
 mod forces;
 mod iter;
@@ -208,7 +209,7 @@ where
 mod tests {
 	use super::*;
 
-	use alloc_counter::AllocCounterSystem;
+	use alloc_counter::{deny_alloc, AllocCounterSystem};
 
 	#[global_allocator]
 	static A: AllocCounterSystem = AllocCounterSystem;
@@ -375,19 +376,9 @@ mod tests {
 			Settings::default(),
 		);
 
-		layout.init_iteration();
-
-		assert_eq!(
-			alloc_counter::count_alloc(|| layout.apply_attraction()).0,
-			(0, 0, 0)
-		);
-		assert_eq!(
-			alloc_counter::count_alloc(|| layout.apply_repulsion()).0,
-			(0, 0, 0)
-		);
-		assert_eq!(
-			alloc_counter::count_alloc(|| layout.apply_gravity()).0,
-			(0, 0, 0)
-		);
+		deny_alloc(|| layout.init_iteration());
+		deny_alloc(|| layout.apply_attraction());
+		deny_alloc(|| layout.apply_gravity());
+		deny_alloc(|| layout.apply_forces());
 	}
 }

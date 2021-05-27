@@ -547,6 +547,8 @@ pub fn apply_repulsion_2d_simd_f64_parallel(layout: &mut Layout<f64>) {
 	let kr = layout.settings.kr;
 	for chunk_iter in layout.iter_par_simd_nodes::<2>(chunk_size) {
 		chunk_iter.for_each(|n1_iter| {
+			let n2_end = n1_iter.n2_end_ind;
+
 			for mut n1 in n1_iter {
 				let n1_mass = n1.mass + 1.;
 				let n1_pos = unsafe {
@@ -607,10 +609,7 @@ pub fn apply_repulsion_2d_simd_f64_parallel(layout: &mut Layout<f64>) {
 
 				// Remaining iteration
 				let layout = unsafe { n1.n2_iter.layout.0.as_mut() };
-				for n2 in n1.n2_iter.ind
-					..(n1.n2_iter.ind + (n1.n2_iter.ind - n1.ind + 1) / 4 * 4 + 4)
-						.min(layout.masses.len())
-				{
+				for n2 in n1.n2_iter.ind..n2_end {
 					let n2_pos = unsafe { layout.points.get_unchecked(n2) };
 
 					let dx = unsafe { *n2_pos.get_unchecked(0) - *n1.pos.get_unchecked(0) };
@@ -647,6 +646,8 @@ pub fn apply_repulsion_2d_simd_f32_parallel(layout: &mut Layout<f32>) {
 	let kr = layout.settings.kr;
 	for chunk_iter in layout.iter_par_simd_nodes::<4>(chunk_size) {
 		chunk_iter.for_each(|n1_iter| {
+			let n2_end = n1_iter.n2_end_ind;
+
 			for mut n1 in n1_iter {
 				let n1_mass = n1.mass + 1.0f32;
 				let n1_pos = unsafe {
@@ -718,10 +719,7 @@ pub fn apply_repulsion_2d_simd_f32_parallel(layout: &mut Layout<f32>) {
 
 				// Remaining iterations
 				let layout = unsafe { n1.n2_iter.layout.0.as_mut() };
-				for n2 in n1.n2_iter.ind
-					..(n1.n2_iter.ind + (n1.n2_iter.ind - n1.ind + 1) / 4 * 4 + 4)
-						.min(layout.masses.len())
-				{
+				for n2 in n1.n2_iter.ind..n2_end {
 					let n2_pos = unsafe { layout.points.get_unchecked(n2) };
 
 					let dx = unsafe { *n2_pos.get_unchecked(0) - *n1.pos.get_unchecked(0) };
