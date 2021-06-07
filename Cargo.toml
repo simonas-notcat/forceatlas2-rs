@@ -31,3 +31,6 @@ stl = {git = "https://github.com/etrombly/rust-stl"}
 default = ["rand", "parallel"]
 barnes_hut = ["nbody_barnes_hut"]
 parallel = ["rayon"]
+
+[workspace]
+members = ["examples/viz"]

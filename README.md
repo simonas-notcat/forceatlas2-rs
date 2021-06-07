@@ -25,15 +25,25 @@ Parallelization is implemented for all the cases without other `barnes_hut` and 
 
     rustup toolchain install nightly && rustup default nightly
 
-A packet may be needed to draw graph:
-
-    sudo apt install libfreetype6-dev
-
 Clone repository:
 
     git clone https://framagit.org/ZettaScript/forceatlas2-rs && cd forceatlas2-rs
 
-Build example: (`examples/wot.csv` file lists the edges of a directed graph, in two columns)
+The file `examples/wot.csv` lists the edges of a directed graph, in two columns.
+
+### GTK viewer
+
+You need GTK installed.
+
+    RUSTFLAGS='-C target-feature=+avx2' cargo run --release -p viz -- examples/wot.csv
+
+### SDL viewer
+
+A packet may be needed to draw graph:
+
+    sudo apt install libfreetype6-dev
+
+Build example:
 
     RUSTFLAGS='-C target-feature=+avx2' cargo build --release --example csv_import
     ./target/release/examples/csv_import examples/wot.csv
