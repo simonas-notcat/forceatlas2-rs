@@ -2,6 +2,29 @@
 <!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
+  <object class="GtkListStore" id="liststore1">
+    <columns>
+      <!-- column-name Type -->
+      <column type="gchararray"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">Auto</col>
+      </row>
+      <row>
+        <col id="0">PNG</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">JPEG</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">TIFF</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">BMP</col>
+      </row>
+    </data>
+  </object>
   <object class="GtkApplicationWindow" id="window">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">ForceAtlas2 viz</property>
@@ -18,7 +41,7 @@
             <property name="can-focus">False</property>
             <property name="orientation">vertical</property>
             <child>
-              <!-- n-columns=2 n-rows=5 -->
+              <!-- n-columns=2 n-rows=6 -->
               <object class="GtkGrid">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
@@ -139,7 +162,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="receives-default">True</property>
-                    <property name="title" translatable="yes">Couleur des arêtes</property>
+                    <property name="title" translatable="yes">Edge color</property>
                     <property name="rgba">rgb(5,5,5)</property>
                     <property name="show-editor">True</property>
                     <accessibility>
@@ -155,11 +178,37 @@
                   <object class="GtkLabel" id="edge_color_label">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">Arêtes</property>
+                    <property name="label" translatable="yes">Edges</property>
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
                     <property name="top-attach">4</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkEntry" id="zoom">
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <property name="text" translatable="yes">1.0</property>
+                    <property name="input-purpose">number</property>
+                    <accessibility>
+                      <relation type="labelled-by" target="zoom_label"/>
+                    </accessibility>
+                  </object>
+                  <packing>
+                    <property name="left-attach">1</property>
+                    <property name="top-attach">5</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="zoom_label">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">Zoom</property>
+                  </object>
+                  <packing>
+                    <property name="left-attach">0</property>
+                    <property name="top-attach">5</property>
                   </packing>
                 </child>
               </object>
@@ -252,7 +301,12 @@
                   <object class="GtkImage" id="graph_area">
                     <property name="visible">True</property>
                     <property name="app-paintable">True</property>
-                    <property name="can-focus">False</property>
+                    <property name="can-focus">True</property>
+                    <child internal-child="accessible">
+                      <object class="AtkObject" id="graph_area-atkobject">
+                        <property name="AtkObject::accessible-name" translatable="yes">Graph</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -266,5 +320,99 @@
         </child>
       </object>
     </child>
+  </object>
+  <object class="GtkFileChooserDialog" id="save_img_window">
+    <property name="can-focus">False</property>
+    <property name="title" translatable="yes">Save image</property>
+    <property name="type-hint">dialog</property>
+    <property name="do-overwrite-confirmation">True</property>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can-focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can-focus">False</property>
+            <property name="layout-style">end</property>
+            <child>
+              <object class="GtkButton" id="bt_cancel">
+                <property name="label" translatable="yes">Cancel</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="bt_save">
+                <property name="label" translatable="yes">Save</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <child>
+              <object class="GtkEntry" id="filename">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="filetype">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="model">liststore1</property>
+                <property name="active">0</property>
+                <child>
+                  <object class="GtkCellRendererText" id="type"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <accessibility>
+      <relation type="subwindow-of" target="window"/>
+    </accessibility>
   </object>
 </interface>
