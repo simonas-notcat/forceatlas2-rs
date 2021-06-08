@@ -45,6 +45,8 @@ fn build_ui(
 	pixbuf: Arc<RwLock<Option<Pixbuf>>>,
 	draw_edges: Arc<RwLock<bool>>,
 	edge_color: Arc<RwLock<(u8, u8, u8)>>,
+	draw_nodes: Arc<RwLock<bool>>,
+	node_color: Arc<RwLock<(u8, u8, u8)>>,
 	zoom: Arc<RwLock<T>>,
 	nb_iters: Arc<RwLock<usize>>,
 ) {
@@ -66,6 +68,8 @@ fn build_ui(
 	let kr_input: gtk::Entry = builder.get_object("kr").unwrap();
 	let draw_edges_input: gtk::CheckButton = builder.get_object("draw_edges").unwrap();
 	let edge_color_input: gtk::ColorButton = builder.get_object("edge_color").unwrap();
+	let draw_nodes_input: gtk::CheckButton = builder.get_object("draw_nodes").unwrap();
+	let node_color_input: gtk::ColorButton = builder.get_object("node_color").unwrap();
 	let zoom_input: gtk::Entry = builder.get_object("zoom").unwrap();
 	let nb_iters_disp: gtk::Label = builder.get_object("nb_iters").unwrap();
 
@@ -89,6 +93,16 @@ fn build_ui(
 			red: edge_color.0 as f64 / 255.,
 			green: edge_color.1 as f64 / 255.,
 			blue: edge_color.2 as f64 / 255.,
+			alpha: 1.,
+		}
+	});
+	draw_nodes_input.set_active(*draw_nodes.read().unwrap());
+	node_color_input.set_rgba({
+		let node_color = node_color.read().unwrap();
+		&gdk::RGBA {
+			red: node_color.0 as f64 / 255.,
+			green: node_color.1 as f64 / 255.,
+			blue: node_color.2 as f64 / 255.,
 			alpha: 1.,
 		}
 	});
@@ -294,6 +308,27 @@ fn build_ui(
 		}
 	});
 
+	draw_nodes_input.connect_toggled({
+		let tx = tx.clone();
+		move |draw_nodes_input| {
+			*draw_nodes.write().unwrap() = draw_nodes_input.get_active();
+			tx.write().unwrap().redraw = true;
+		}
+	});
+
+	node_color_input.connect_color_set({
+		let tx = tx.clone();
+		move |node_color_input| {
+			let c = node_color_input.get_rgba();
+			*node_color.write().unwrap() = (
+				(c.red * 255.) as u8,
+				(c.green * 255.) as u8,
+				(c.blue * 255.) as u8,
+			);
+			tx.write().unwrap().redraw = true;
+		}
+	});
+
 	zoom_input.connect_changed({
 		let pixbuf = pixbuf.clone();
 		let graph_box = graph_box.clone();
@@ -386,6 +421,8 @@ pub fn run(
 	let pixbuf = Arc::new(RwLock::new(None));
 	let draw_edges = Arc::new(RwLock::new(true));
 	let edge_color = Arc::new(RwLock::new((5, 5, 5)));
+	let draw_nodes = Arc::new(RwLock::new(true));
+	let node_color = Arc::new(RwLock::new((255, 0, 0)));
 	let zoom = Arc::new(RwLock::new(1.0));
 
 	application.connect_activate({
@@ -394,6 +431,8 @@ pub fn run(
 		let pixbuf = pixbuf.clone();
 		let draw_edges = draw_edges.clone();
 		let edge_color = edge_color.clone();
+		let draw_nodes = draw_nodes.clone();
+		let node_color = node_color.clone();
 		let msg_from_gtk = msg_from_gtk.clone();
 		move |app| {
 			build_ui(
@@ -406,6 +445,8 @@ pub fn run(
 				pixbuf.clone(),
 				draw_edges.clone(),
 				edge_color.clone(),
+				draw_nodes.clone(),
+				node_color.clone(),
 				zoom.clone(),
 				nb_iters.clone(),
 			)
@@ -423,6 +464,8 @@ pub fn run(
 					pixbuf.0.get_rowstride(),
 					*draw_edges.read().unwrap(),
 					*edge_color.read().unwrap(),
+					*draw_nodes.read().unwrap(),
+					*node_color.read().unwrap(),
 				);
 				tx.send(MsgToGtk::Update).unwrap();
 			}
@@ -450,6 +493,8 @@ pub fn run(
 						pixbuf.0.get_rowstride(),
 						*draw_edges.read().unwrap(),
 						*edge_color.read().unwrap(),
+						*draw_nodes.read().unwrap(),
+						*node_color.read().unwrap(),
 					);
 					tx.send(MsgToGtk::Update).unwrap();
 				}

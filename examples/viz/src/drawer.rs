@@ -58,6 +58,62 @@ fn draw_line(
 	}
 }
 
+pub fn draw_disk(
+	buffer: &mut [u8],
+	size: (i32, i32),
+	rowstride: i32,
+	color: (u8, u8, u8),
+	center: (i32, i32),
+	radius: i32,
+) {
+	let r2 = radius.pow(2);
+	for y in 0..radius {
+		let mx = ((r2 - y * y) as f64).sqrt() as i32;
+		for x in 0..mx {
+			if center.0 + x >= 0
+				&& center.0 + x < size.0
+				&& center.1 + y >= 0
+				&& center.1 + y < size.1
+			{
+				let offset = ((center.1 + y) * rowstride + (center.0 + x) * 3) as usize;
+				buffer[offset] = color.0;
+				buffer[offset + 1] = color.1;
+				buffer[offset + 2] = color.2;
+			}
+			if center.0 - x >= 0
+				&& center.0 - x < size.0
+				&& center.1 + y >= 0
+				&& center.1 + y < size.1
+			{
+				let offset = ((center.1 + y) * rowstride + (center.0 - x) * 3) as usize;
+				buffer[offset] = color.0;
+				buffer[offset + 1] = color.1;
+				buffer[offset + 2] = color.2;
+			}
+			if center.0 + x >= 0
+				&& center.0 + x < size.0
+				&& center.1 - y >= 0
+				&& center.1 - y < size.1
+			{
+				let offset = ((center.1 - y) * rowstride + (center.0 + x) * 3) as usize;
+				buffer[offset] = color.0;
+				buffer[offset + 1] = color.1;
+				buffer[offset + 2] = color.2;
+			}
+			if center.0 - x >= 0
+				&& center.0 - x < size.0
+				&& center.1 - y >= 0
+				&& center.1 - y < size.1
+			{
+				let offset = ((center.1 - y) * rowstride + (center.0 - x) * 3) as usize;
+				buffer[offset] = color.0;
+				buffer[offset + 1] = color.1;
+				buffer[offset + 2] = color.2;
+			}
+		}
+	}
+}
+
 pub fn draw_graph(
 	layout: std::sync::RwLockReadGuard<Layout<T>>,
 	size: (i32, i32),
@@ -65,6 +121,8 @@ pub fn draw_graph(
 	rowstride: i32,
 	draw_edges: bool,
 	edge_color: (u8, u8, u8),
+	draw_nodes: bool,
+	node_color: (u8, u8, u8),
 ) {
 	pixels.fill(255);
 
@@ -123,6 +181,26 @@ pub fn draw_graph(
 						)
 					}
 				},
+			);
+		}
+	}
+
+	if draw_nodes {
+		for pos in layout.points.iter() {
+			draw_disk(
+				pixels,
+				size,
+				rowstride,
+				node_color,
+				{
+					unsafe {
+						(
+							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
+							((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
+						)
+					}
+				},
+				2,
 			);
 		}
 	}
