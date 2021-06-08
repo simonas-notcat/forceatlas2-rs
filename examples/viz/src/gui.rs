@@ -66,6 +66,10 @@ fn build_ui(
 	let zoom_input: gtk::Entry = builder.get_object("zoom").unwrap();
 
 	let save_img_window: gtk::FileChooserDialog = builder.get_object("save_img_window").unwrap();
+	let siw_cancel_button: gtk::Button = builder.get_object("siw_bt_cancel").unwrap();
+	let siw_save_button: gtk::Button = builder.get_object("siw_bt_save").unwrap();
+	let siw_filename: gtk::Entry = builder.get_object("siw_filename").unwrap();
+	let siw_filetype: gtk::ComboBox = builder.get_object("siw_filetype").unwrap();
 
 	{
 		let settings = settings.read().unwrap();
@@ -136,11 +140,46 @@ fn build_ui(
 	save_img_window
 		.connect_delete_event(move |save_img_window, _| save_img_window.hide_on_delete());
 
+	siw_cancel_button.connect_clicked({
+		let save_img_window = save_img_window.clone();
+		move |_| save_img_window.hide()
+	});
+
+	siw_save_button.connect_clicked({
+		let pixbuf = pixbuf.clone();
+		move |_| {
+			let filename = siw_filename.get_text();
+			let filename = filename.as_str();
+			let filetype = siw_filetype.get_active_id();
+			let filetype = filetype.as_ref().map_or_else(
+				|| {
+					if filename.ends_with(".jpg") || filename.ends_with(".jpeg") {
+						"jpeg"
+					} else if filename.ends_with(".tiff") {
+						"tiff"
+					} else if filename.ends_with(".bmp") {
+						"bmp"
+					} else {
+						"png"
+					}
+				},
+				|filetype| filetype.as_str(),
+			);
+			if let Some(pixbuf) = pixbuf.read().unwrap().as_ref() {
+				let path = save_img_window.get_current_folder().unwrap().join(filename);
+				if let Err(e) = pixbuf.0.savev(path, filetype, &[]) {
+					eprintln!("Error while saving: {:?}", e);
+				}
+				save_img_window.hide()
+			}
+		}
+	});
+
 	chunk_size_input.connect_changed({
 		let layout = layout.clone();
 		let settings = settings.clone();
 		move |entry| {
-			if let Ok(chunk_size) = entry.get_buffer().get_text().parse() {
+			if let Ok(chunk_size) = entry.get_text().parse() {
 				entry.override_background_color(gtk::StateFlags::NORMAL, None);
 				if let Ok(mut settings) = settings.write() {
 					settings.chunk_size = if chunk_size == 0 {
@@ -162,7 +201,7 @@ fn build_ui(
 		let layout = layout.clone();
 		let settings = settings.clone();
 		move |entry| {
-			if let Ok(ka) = entry.get_buffer().get_text().parse() {
+			if let Ok(ka) = entry.get_text().parse() {
 				entry.override_background_color(gtk::StateFlags::NORMAL, None);
 				if let Ok(mut settings) = settings.write() {
 					settings.ka = ka;
@@ -180,7 +219,7 @@ fn build_ui(
 		let layout = layout.clone();
 		let settings = settings.clone();
 		move |entry| {
-			if let Ok(kg) = entry.get_buffer().get_text().parse() {
+			if let Ok(kg) = entry.get_text().parse() {
 				entry.override_background_color(gtk::StateFlags::NORMAL, None);
 				if let Ok(mut settings) = settings.write() {
 					settings.kg = kg;
@@ -196,7 +235,7 @@ fn build_ui(
 
 	kr_input.connect_changed({
 		move |entry| {
-			if let Ok(kr) = entry.get_buffer().get_text().parse() {
+			if let Ok(kr) = entry.get_text().parse() {
 				entry.override_background_color(gtk::StateFlags::NORMAL, None);
 				if let Ok(mut settings) = settings.write() {
 					settings.kr = kr;
@@ -229,7 +268,7 @@ fn build_ui(
 		let tx = tx.clone();
 		let zoom = zoom.clone();
 		move |entry| {
-			if let Ok(val) = entry.get_buffer().get_text().parse() {
+			if let Ok(val) = entry.get_text().parse() {
 				if val > 0.0 {
 					entry.override_background_color(gtk::StateFlags::NORMAL, None);
 					let mut zoom = zoom.write().unwrap();

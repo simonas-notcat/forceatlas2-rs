@@ -6,22 +6,29 @@
     <columns>
       <!-- column-name Type -->
       <column type="gchararray"/>
+      <!-- column-name id -->
+      <column type="gchararray"/>
     </columns>
     <data>
       <row>
         <col id="0" translatable="yes">Auto</col>
+        <col id="1" translatable="yes"/>
       </row>
       <row>
         <col id="0">PNG</col>
+        <col id="1" translatable="yes">png</col>
       </row>
       <row>
         <col id="0" translatable="yes">JPEG</col>
+        <col id="1" translatable="yes">jpeg</col>
       </row>
       <row>
         <col id="0" translatable="yes">TIFF</col>
+        <col id="1" translatable="yes">tiff</col>
       </row>
       <row>
         <col id="0" translatable="yes">BMP</col>
+        <col id="1" translatable="yes">bmp</col>
       </row>
     </data>
   </object>
@@ -293,6 +300,8 @@
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="shadow-type">in</property>
+            <property name="propagate-natural-width">True</property>
+            <property name="propagate-natural-height">True</property>
             <child>
               <object class="GtkViewport">
                 <property name="visible">True</property>
@@ -336,7 +345,7 @@
             <property name="can-focus">False</property>
             <property name="layout-style">end</property>
             <child>
-              <object class="GtkButton" id="bt_cancel">
+              <object class="GtkButton" id="siw_bt_cancel">
                 <property name="label" translatable="yes">Cancel</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
@@ -349,7 +358,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="bt_save">
+              <object class="GtkButton" id="siw_bt_save">
                 <property name="label" translatable="yes">Save</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
@@ -373,9 +382,10 @@
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <child>
-              <object class="GtkEntry" id="filename">
+              <object class="GtkEntry" id="siw_filename">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="text" translatable="yes">graph.png</property>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -384,11 +394,12 @@
               </packing>
             </child>
             <child>
-              <object class="GtkComboBox" id="filetype">
+              <object class="GtkComboBox" id="siw_filetype">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="model">liststore1</property>
                 <property name="active">0</property>
+                <property name="id-column">1</property>
                 <child>
                   <object class="GtkCellRendererText" id="type"/>
                   <attributes>
