@@ -63,6 +63,7 @@ pub fn draw_graph(
 	size: (i32, i32),
 	pixels: &mut [u8],
 	rowstride: i32,
+	draw_edges: bool,
 	edge_color: (u8, u8, u8),
 ) {
 	pixels.fill(255);
@@ -97,30 +98,32 @@ pub fn draw_graph(
 		}
 	};
 
-	for (h1, h2) in layout.edges.iter() {
-		draw_line(
-			pixels,
-			size,
-			rowstride,
-			edge_color,
-			{
-				let pos = layout.points.get(*h1);
-				unsafe {
-					(
-						((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
-						((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
-					)
-				}
-			},
-			{
-				let pos = layout.points.get(*h2);
-				unsafe {
-					(
-						((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
-						((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
-					)
-				}
-			},
-		);
+	if draw_edges {
+		for (h1, h2) in layout.edges.iter() {
+			draw_line(
+				pixels,
+				size,
+				rowstride,
+				edge_color,
+				{
+					let pos = layout.points.get(*h1);
+					unsafe {
+						(
+							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
+							((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
+						)
+					}
+				},
+				{
+					let pos = layout.points.get(*h2);
+					unsafe {
+						(
+							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
+							((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
+						)
+					}
+				},
+			);
+		}
 	}
 }

@@ -43,6 +43,7 @@ fn build_ui(
 	layout: Arc<RwLock<Layout<T>>>,
 	settings: Arc<RwLock<Settings<T>>>,
 	pixbuf: Arc<RwLock<Option<Pixbuf>>>,
+	draw_edges: Arc<RwLock<bool>>,
 	edge_color: Arc<RwLock<(u8, u8, u8)>>,
 	zoom: Arc<RwLock<T>>,
 	nb_iters: Arc<RwLock<usize>>,
@@ -63,6 +64,7 @@ fn build_ui(
 	let ka_input: gtk::Entry = builder.get_object("ka").unwrap();
 	let kg_input: gtk::Entry = builder.get_object("kg").unwrap();
 	let kr_input: gtk::Entry = builder.get_object("kr").unwrap();
+	let draw_edges_input: gtk::CheckButton = builder.get_object("draw_edges").unwrap();
 	let edge_color_input: gtk::ColorButton = builder.get_object("edge_color").unwrap();
 	let zoom_input: gtk::Entry = builder.get_object("zoom").unwrap();
 	let nb_iters_disp: gtk::Label = builder.get_object("nb_iters").unwrap();
@@ -80,6 +82,16 @@ fn build_ui(
 		kg_input.set_text(&settings.kg.to_string());
 		kr_input.set_text(&settings.kr.to_string());
 	}
+	draw_edges_input.set_active(*draw_edges.read().unwrap());
+	edge_color_input.set_rgba({
+		let edge_color = edge_color.read().unwrap();
+		&gdk::RGBA {
+			red: edge_color.0 as f64 / 255.,
+			green: edge_color.1 as f64 / 255.,
+			blue: edge_color.2 as f64 / 255.,
+			alpha: 1.,
+		}
+	});
 	zoom_input.set_text(&zoom.read().unwrap().to_string());
 
 	{
@@ -261,6 +273,14 @@ fn build_ui(
 		}
 	});
 
+	draw_edges_input.connect_toggled({
+		let tx = tx.clone();
+		move |draw_edges_input| {
+			*draw_edges.write().unwrap() = draw_edges_input.get_active();
+			tx.write().unwrap().redraw = true;
+		}
+	});
+
 	edge_color_input.connect_color_set({
 		let tx = tx.clone();
 		move |edge_color_input| {
@@ -364,6 +384,7 @@ pub fn run(
 		resize: false,
 	}));
 	let pixbuf = Arc::new(RwLock::new(None));
+	let draw_edges = Arc::new(RwLock::new(true));
 	let edge_color = Arc::new(RwLock::new((5, 5, 5)));
 	let zoom = Arc::new(RwLock::new(1.0));
 
@@ -371,6 +392,7 @@ pub fn run(
 		let compute = compute.clone();
 		let layout = layout.clone();
 		let pixbuf = pixbuf.clone();
+		let draw_edges = draw_edges.clone();
 		let edge_color = edge_color.clone();
 		let msg_from_gtk = msg_from_gtk.clone();
 		move |app| {
@@ -382,6 +404,7 @@ pub fn run(
 				layout.clone(),
 				settings.clone(),
 				pixbuf.clone(),
+				draw_edges.clone(),
 				edge_color.clone(),
 				zoom.clone(),
 				nb_iters.clone(),
@@ -398,6 +421,7 @@ pub fn run(
 					(pixbuf.0.get_width(), pixbuf.0.get_height()),
 					unsafe { pixbuf.0.get_pixels() },
 					pixbuf.0.get_rowstride(),
+					*draw_edges.read().unwrap(),
 					*edge_color.read().unwrap(),
 				);
 				tx.send(MsgToGtk::Update).unwrap();
@@ -424,6 +448,7 @@ pub fn run(
 						(pixbuf.0.get_width(), pixbuf.0.get_height()),
 						unsafe { pixbuf.0.get_pixels() },
 						pixbuf.0.get_rowstride(),
+						*draw_edges.read().unwrap(),
 						*edge_color.read().unwrap(),
 					);
 					tx.send(MsgToGtk::Update).unwrap();
