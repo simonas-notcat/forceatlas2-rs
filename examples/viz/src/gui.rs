@@ -45,6 +45,7 @@ fn build_ui(
 	pixbuf: Arc<RwLock<Option<Pixbuf>>>,
 	edge_color: Arc<RwLock<(u8, u8, u8)>>,
 	zoom: Arc<RwLock<T>>,
+	nb_iters: Arc<RwLock<usize>>,
 ) {
 	let glade_src = include_str!("gui.glade");
 	let builder = gtk::Builder::new();
@@ -64,6 +65,7 @@ fn build_ui(
 	let kr_input: gtk::Entry = builder.get_object("kr").unwrap();
 	let edge_color_input: gtk::ColorButton = builder.get_object("edge_color").unwrap();
 	let zoom_input: gtk::Entry = builder.get_object("zoom").unwrap();
+	let nb_iters_disp: gtk::Label = builder.get_object("nb_iters").unwrap();
 
 	let save_img_window: gtk::FileChooserDialog = builder.get_object("save_img_window").unwrap();
 	let siw_cancel_button: gtk::Button = builder.get_object("siw_bt_cancel").unwrap();
@@ -79,6 +81,14 @@ fn build_ui(
 		kr_input.set_text(&settings.kr.to_string());
 	}
 	zoom_input.set_text(&zoom.read().unwrap().to_string());
+
+	{
+		let layout = layout.read().unwrap();
+		let nb_nodes_disp: gtk::Label = builder.get_object("nb_nodes").unwrap();
+		let nb_edges_disp: gtk::Label = builder.get_object("nb_edges").unwrap();
+		nb_nodes_disp.set_text(&layout.masses.len().to_string());
+		nb_edges_disp.set_text(&layout.edges.len().to_string());
+	}
 
 	graph_area.connect_key_press_event({
 		let zoom_input = zoom_input.clone();
@@ -121,12 +131,14 @@ fn build_ui(
 	reset_button.connect_clicked({
 		let layout = layout.clone();
 		let tx = tx.clone();
+		let nb_iters = nb_iters.clone();
 		move |_| {
 			let mut rng = rand::thread_rng();
 			let mut layout = layout.write().unwrap();
 			layout.old_speeds.points.fill(0.0);
 			layout.points.points.fill_with(|| rng.gen_range(-1.0..1.0));
 			tx.write().unwrap().redraw = true;
+			*nb_iters.write().unwrap() = 0;
 		}
 	});
 
@@ -322,6 +334,7 @@ fn build_ui(
 					if let Some(pixbuf) = pixbuf.read().unwrap().as_ref() {
 						graph_area.set_from_pixbuf(Some(&pixbuf.0));
 					}
+					nb_iters_disp.set_text(&nb_iters.read().unwrap().to_string());
 				}
 				MsgToGtk::Resize => resize_handler(),
 			}
@@ -336,6 +349,7 @@ pub fn run(
 	compute: Arc<RwLock<bool>>,
 	layout: Arc<RwLock<Layout<T>>>,
 	settings: Arc<RwLock<Settings<T>>>,
+	nb_iters: Arc<RwLock<usize>>,
 ) {
 	let application = gtk::Application::new(
 		Some("org.framagit.ZettaScript.forceatlas2.examples.viz"),
@@ -370,6 +384,7 @@ pub fn run(
 				pixbuf.clone(),
 				edge_color.clone(),
 				zoom.clone(),
+				nb_iters.clone(),
 			)
 		}
 	});

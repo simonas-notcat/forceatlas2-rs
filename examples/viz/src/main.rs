@@ -64,13 +64,17 @@ fn main() {
 
 	let compute = Arc::new(RwLock::new(false));
 	let settings = Arc::new(RwLock::new(settings));
+	let nb_iters = Arc::new(RwLock::new(0usize));
 
 	thread::spawn({
 		let compute = compute.clone();
 		let layout = layout.clone();
+		let nb_iters = nb_iters.clone();
 		move || loop {
 			thread::sleep(if *compute.read().unwrap() {
+				let mut nb_iters = nb_iters.write().unwrap();
 				layout.write().unwrap().iteration();
+				*nb_iters += 1;
 				COMPUTE_SLEEP
 			} else {
 				STANDBY_SLEEP
@@ -78,5 +82,5 @@ fn main() {
 		}
 	});
 
-	gui::run(compute, layout, settings);
+	gui::run(compute, layout, settings, nb_iters);
 }

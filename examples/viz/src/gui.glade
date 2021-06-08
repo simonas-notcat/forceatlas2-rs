@@ -57,6 +57,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="label" translatable="yes">Chunk size</property>
+                    <property name="xalign">1</property>
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
@@ -136,6 +137,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="label" translatable="yes">Attraction</property>
+                    <property name="xalign">1</property>
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
@@ -147,6 +149,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="label" translatable="yes">Gravity</property>
+                    <property name="xalign">1</property>
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
@@ -158,6 +161,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="label" translatable="yes">Repulsion</property>
+                    <property name="xalign">1</property>
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
@@ -186,6 +190,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="label" translatable="yes">Edges</property>
+                    <property name="xalign">1</property>
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
@@ -212,6 +217,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="label" translatable="yes">Zoom</property>
+                    <property name="xalign">1</property>
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
@@ -223,6 +229,100 @@
                 <property name="expand">True</property>
                 <property name="fill">True</property>
                 <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <!-- n-columns=2 n-rows=3 -->
+              <object class="GtkGrid">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <child>
+                  <object class="GtkLabel" id="nb_iters_label">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">Iterations:</property>
+                    <property name="xalign">1</property>
+                  </object>
+                  <packing>
+                    <property name="left-attach">0</property>
+                    <property name="top-attach">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="nb_nodes_label">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">Nodes:</property>
+                    <property name="xalign">1</property>
+                  </object>
+                  <packing>
+                    <property name="left-attach">0</property>
+                    <property name="top-attach">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="nb_edges_label">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">Edges:</property>
+                    <property name="xalign">1</property>
+                  </object>
+                  <packing>
+                    <property name="left-attach">0</property>
+                    <property name="top-attach">2</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="nb_iters">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">0</property>
+                    <property name="selectable">True</property>
+                    <property name="xalign">1</property>
+                    <accessibility>
+                      <relation type="labelled-by" target="nb_iters_label"/>
+                    </accessibility>
+                  </object>
+                  <packing>
+                    <property name="left-attach">1</property>
+                    <property name="top-attach">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="nb_nodes">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="selectable">True</property>
+                    <property name="xalign">1</property>
+                    <accessibility>
+                      <relation type="labelled-by" target="nb_nodes_label"/>
+                    </accessibility>
+                  </object>
+                  <packing>
+                    <property name="left-attach">1</property>
+                    <property name="top-attach">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="nb_edges">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="selectable">True</property>
+                    <property name="xalign">1</property>
+                    <accessibility>
+                      <relation type="labelled-by" target="nb_edges_label"/>
+                    </accessibility>
+                  </object>
+                  <packing>
+                    <property name="left-attach">1</property>
+                    <property name="top-attach">2</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
               </packing>
             </child>
             <child>
@@ -260,7 +360,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">1</property>
+                <property name="position">2</property>
               </packing>
             </child>
             <child>
@@ -285,7 +385,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">2</property>
+                <property name="position">3</property>
               </packing>
             </child>
           </object>
