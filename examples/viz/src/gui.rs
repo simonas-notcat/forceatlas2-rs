@@ -50,15 +50,17 @@ fn build_ui(
 	zoom: Arc<RwLock<T>>,
 	nb_iters: Arc<RwLock<usize>>,
 ) {
-	let glade_src = include_str!("gui.glade");
 	let builder = gtk::Builder::new();
-	builder.add_from_string(glade_src).unwrap();
+	builder.add_from_string(include_str!("gui.glade")).unwrap();
 
 	let window: gtk::ApplicationWindow = builder.get_object("window").unwrap();
 	window.set_application(Some(app));
 
 	let graph_area: gtk::Image = builder.get_object("graph_area").unwrap();
 	let graph_box: gtk::ScrolledWindow = builder.get_object("graph_box").unwrap();
+	let graph_viewport: gtk::Viewport = builder.get_object("graph_viewport").unwrap();
+	let graph_hadj: gtk::Adjustment = graph_box.get_hadjustment().unwrap();
+	let graph_vadj: gtk::Adjustment = graph_box.get_vadjustment().unwrap();
 	let compute_button: gtk::ToggleButton = builder.get_object("bt_compute").unwrap();
 	let reset_button: gtk::Button = builder.get_object("bt_reset").unwrap();
 	let save_img_button: gtk::Button = builder.get_object("bt_save_img").unwrap();
@@ -116,10 +118,46 @@ fn build_ui(
 		nb_edges_disp.set_text(&layout.edges.len().to_string());
 	}
 
+	let graph_adj = Rc::new((graph_hadj, graph_vadj));
+	let graph_drag = Rc::new(RwLock::new(None));
+	let graph_gesture_drag = gtk::GestureDrag::new(&graph_viewport);
+	graph_gesture_drag.set_touch_only(false);
+
+	graph_gesture_drag.connect_drag_begin({
+		let graph_drag = graph_drag.clone();
+		let graph_adj = graph_adj.clone();
+		move |_, _, _| {
+			*graph_drag.write().unwrap() = Some((graph_adj.0.get_value(), graph_adj.1.get_value()));
+		}
+	});
+	graph_gesture_drag.connect_drag_update({
+		let graph_drag = graph_drag.clone();
+		let graph_adj = graph_adj.clone();
+		move |_, x, y| {
+			if let Some((cx, cy)) = graph_drag.read().unwrap().as_ref() {
+				graph_adj.0.set_value(cx - x);
+				graph_adj.1.set_value(cy - y);
+			}
+		}
+	});
+	graph_gesture_drag.connect_drag_end({
+		move |_, x, y| {
+			if let Some((cx, cy)) = graph_drag.write().unwrap().take() {
+				graph_adj.0.set_value(cx - x);
+				graph_adj.1.set_value(cy - y);
+			}
+		}
+	});
+
 	graph_area.connect_key_press_event({
 		let zoom_input = zoom_input.clone();
 		let zoom = zoom.clone();
 		move |_, event| {
+			#[allow(clippy::no_effect)]
+			{
+				&graph_gesture_drag; // avoid GC
+			}
+
 			if let Some(key) = event.get_keyval().name() {
 				match key.as_str() {
 					"KP_Add" | "plus" => {
@@ -331,7 +369,6 @@ fn build_ui(
 
 	zoom_input.connect_changed({
 		let pixbuf = pixbuf.clone();
-		let graph_box = graph_box.clone();
 		let tx = tx.clone();
 		let zoom = zoom.clone();
 		move |entry| {
@@ -368,8 +405,8 @@ fn build_ui(
 				gdk_pixbuf::Colorspace::Rgb,
 				false,
 				8,
-				(graph_box.get_allocated_width() as T * *zoom) as i32,
-				(graph_box.get_allocated_height() as T * *zoom) as i32,
+				(graph_viewport.get_allocated_width() as T * *zoom) as i32,
+				(graph_viewport.get_allocated_height() as T * *zoom) as i32,
 			)
 			.map(Pixbuf);
 		}

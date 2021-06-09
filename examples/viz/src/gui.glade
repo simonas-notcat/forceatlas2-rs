@@ -266,7 +266,6 @@
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">False</property>
-                        <property name="margin-right">2</property>
                         <property name="margin-end">2</property>
                         <property name="active">True</property>
                         <property name="draw-indicator">True</property>
@@ -312,7 +311,6 @@
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="margin-right">2</property>
                     <property name="margin-end">2</property>
                     <property name="label" translatable="yes">Nodes</property>
                     <property name="xalign">1</property>
@@ -500,11 +498,14 @@
           <object class="GtkScrolledWindow" id="graph_box">
             <property name="visible">True</property>
             <property name="can-focus">True</property>
+            <property name="hscrollbar-policy">always</property>
+            <property name="vscrollbar-policy">always</property>
             <property name="shadow-type">in</property>
+            <property name="overlay-scrolling">False</property>
             <property name="propagate-natural-width">True</property>
             <property name="propagate-natural-height">True</property>
             <child>
-              <object class="GtkViewport">
+              <object class="GtkViewport" id="graph_viewport">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <child>
