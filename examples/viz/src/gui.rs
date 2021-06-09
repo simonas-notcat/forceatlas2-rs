@@ -118,15 +118,18 @@ fn build_ui(
 		nb_edges_disp.set_text(&layout.edges.len().to_string());
 	}
 
+	let graph_area = Rc::new(graph_area);
 	let graph_adj = Rc::new((graph_hadj, graph_vadj));
 	let graph_drag = Rc::new(RwLock::new(None));
 	let graph_gesture_drag = gtk::GestureDrag::new(&graph_viewport);
 	graph_gesture_drag.set_touch_only(false);
 
 	graph_gesture_drag.connect_drag_begin({
+		let graph_area = graph_area.clone();
 		let graph_drag = graph_drag.clone();
 		let graph_adj = graph_adj.clone();
 		move |_, _, _| {
+			graph_area.grab_focus();
 			*graph_drag.write().unwrap() = Some((graph_adj.0.get_value(), graph_adj.1.get_value()));
 		}
 	});
@@ -176,9 +179,9 @@ fn build_ui(
 		}
 	});
 
-	let graph_area = Rc::new(graph_area);
 	let edge_color_input = Rc::new(edge_color_input);
 	let save_img_window = Rc::new(save_img_window);
+	let graph_viewport = Rc::new(graph_viewport);
 
 	compute_button.connect_toggled({
 		let tx = tx.clone();
@@ -371,6 +374,7 @@ fn build_ui(
 		let pixbuf = pixbuf.clone();
 		let tx = tx.clone();
 		let zoom = zoom.clone();
+		let graph_viewport = graph_viewport.clone();
 		move |entry| {
 			if let Ok(val) = entry.get_text().parse() {
 				if val > 0.0 {
@@ -382,8 +386,8 @@ fn build_ui(
 						gdk_pixbuf::Colorspace::Rgb,
 						false,
 						8,
-						(graph_box.get_allocated_width() as T * *zoom) as i32,
-						(graph_box.get_allocated_height() as T * *zoom) as i32,
+						(graph_viewport.get_allocated_width() as T * *zoom) as i32,
+						(graph_viewport.get_allocated_height() as T * *zoom) as i32,
 					)
 					.map(Pixbuf);
 					tx.write().unwrap().redraw = true;
