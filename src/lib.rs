@@ -132,7 +132,12 @@ where
 		&self.settings
 	}
 
+	/// Changes layout settings
+	///
+	/// # Panics
+	/// Panics if `settings.dimensions` is changed.
 	pub fn set_settings(&mut self, settings: Settings<T>) {
+		assert_eq!(self.settings.dimensions, settings.dimensions);
 		self.fn_attraction = Self::choose_attraction(&settings);
 		self.fn_gravity = forces::choose_gravity(&settings);
 		self.fn_repulsion = Self::choose_repulsion(&settings);
