@@ -4,6 +4,7 @@ use forceatlas2::*;
 use gio::prelude::*;
 use gtk::prelude::*;
 use rand::Rng;
+use static_rc::StaticRc;
 use std::{
 	rc::Rc,
 	sync::{Arc, RwLock},
@@ -118,8 +119,9 @@ fn build_ui(
 		nb_edges_disp.set_text(&layout.edges.len().to_string());
 	}
 
-	let graph_area = Rc::new(graph_area);
-	let graph_adj = Rc::new((graph_hadj, graph_vadj));
+	let graph_area = StaticRc::<gtk::Image, 1, 1>::new(graph_area);
+	let graph_adj =
+		StaticRc::<(gtk::Adjustment, gtk::Adjustment), 1, 1>::new((graph_hadj, graph_vadj));
 	let graph_drag = Rc::new(RwLock::new(None));
 	let graph_gesture_drag = gtk::GestureDrag::new(&graph_viewport);
 	graph_gesture_drag.set_touch_only(false);
@@ -179,9 +181,9 @@ fn build_ui(
 		}
 	});
 
-	let edge_color_input = Rc::new(edge_color_input);
-	let save_img_window = Rc::new(save_img_window);
-	let graph_viewport = Rc::new(graph_viewport);
+	let edge_color_input = StaticRc::<gtk::ColorButton, 1, 1>::new(edge_color_input);
+	let save_img_window = StaticRc::<gtk::FileChooserDialog, 1, 1>::new(save_img_window);
+	let graph_viewport = StaticRc::<gtk::Viewport, 1, 1>::new(graph_viewport);
 
 	compute_button.connect_toggled({
 		let tx = tx.clone();

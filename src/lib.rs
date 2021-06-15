@@ -26,11 +26,20 @@ where
 	///
 	/// Assumes edges `(n1, n2)` respect `n1 < n2`.
 	#[cfg(feature = "rand")]
-	pub fn from_graph(edges: Vec<Edge>, nodes: Nodes<T>, settings: Settings<T>) -> Self
+	pub fn from_graph(
+		edges: Vec<Edge>,
+		nodes: Nodes<T>,
+		weights: Option<Vec<T>>,
+		settings: Settings<T>,
+	) -> Self
 	where
 		rand::distributions::Standard: rand::distributions::Distribution<T>,
 		T: rand::distributions::uniform::SampleUniform,
 	{
+		if let Some(weights) = &weights {
+			assert_eq!(weights.len(), edges.len());
+		}
+
 		let nodes = match nodes {
 			Nodes::Degree(nb_nodes) => {
 				let mut degrees: Vec<usize> = vec![0; nb_nodes];
@@ -67,6 +76,7 @@ where
 				dimensions: settings.dimensions,
 				points: (0..nb).map(|_| T::zero()).collect(),
 			},
+			weights,
 			fn_attraction: Self::choose_attraction(&settings),
 			fn_gravity: forces::choose_gravity(&settings),
 			fn_repulsion: Self::choose_repulsion(&settings),
@@ -83,11 +93,16 @@ where
 		edges: Vec<Edge>,
 		nodes: Nodes<T>,
 		positions: Vec<T>,
+		weights: Option<Vec<T>>,
 		settings: Settings<T>,
 	) -> Self
 	where
 		T: 'a,
 	{
+		if let Some(weights) = &weights {
+			assert_eq!(weights.len(), edges.len());
+		}
+
 		let nodes = match nodes {
 			Nodes::Degree(nb_nodes) => {
 				let mut degrees: Vec<usize> = vec![0; nb_nodes];
@@ -120,6 +135,7 @@ where
 				dimensions: settings.dimensions,
 				points: (0..nb).map(|_| T::zero()).collect(),
 			},
+			weights,
 			fn_attraction: Self::choose_attraction(&settings),
 			fn_gravity: forces::choose_gravity(&settings),
 			fn_repulsion: Self::choose_repulsion(&settings),
@@ -223,6 +239,7 @@ mod tests {
 		let mut layout = Layout::<f64>::from_graph(
 			vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 4)],
 			Nodes::Degree(5),
+			None,
 			Settings::default(),
 		);
 
@@ -239,6 +256,7 @@ mod tests {
 			vec![(0, 1)],
 			Nodes::Degree(2),
 			vec![-1.0, -1.0, 1.0, 1.0],
+			None,
 			Settings::default(),
 		);
 		layout
@@ -257,6 +275,7 @@ mod tests {
 			vec![(0, 1)],
 			Nodes::Degree(2),
 			vec![-2.0, -2.0, 1.0, 2.0],
+			None,
 			Settings::default(),
 		);
 
@@ -334,6 +353,7 @@ mod tests {
 			vec![(0, 1), (1, 2)],
 			Nodes::Degree(3),
 			vec![-1.1, -1.0, 0.0, 0.0, 1.0, 1.0],
+			None,
 			Settings {
 				#[cfg(feature = "parallel")]
 				chunk_size: None,
@@ -376,6 +396,7 @@ mod tests {
 		let mut layout = Layout::<f64>::from_graph(
 			vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 4), (3, 4)],
 			Nodes::Degree(5),
+			None,
 			Settings::default(),
 		);
 

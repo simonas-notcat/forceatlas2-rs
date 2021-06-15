@@ -1,6 +1,21 @@
 use crate::T;
 
 use forceatlas2::*;
+use nalgebra::{Matrix2x3, Unit, Vector3};
+
+type Rgb = (u8, u8, u8);
+
+pub struct RgbGradient {
+	start_color: Rgb,
+	start_value: T,
+	end_color: Rgb,
+	end_value: T,
+}
+
+pub enum NodeColor {
+	Fixed(Rgb),
+	Mass(RgbGradient),
+}
 
 // https://github.com/deep110/ada/blob/master/src/shape/line2d.rs
 fn draw_line(
@@ -201,6 +216,67 @@ pub fn draw_graph(
 					}
 				},
 				2,
+			);
+		}
+	}
+}
+
+pub fn _draw_graph_3d(
+	layout: std::sync::RwLockReadGuard<Layout<T>>,
+	size: (i32, i32),
+	pixels: &mut [u8],
+	rowstride: i32,
+	draw_edges: bool,
+	edge_color: (u8, u8, u8),
+) {
+	let camera = cam_geom::Camera::new(
+		cam_geom::IntrinsicParametersPerspective::from(cam_geom::PerspectiveParams {
+			fx: 100.0,
+			fy: 100.0,
+			skew: 0.0,
+			cx: size.0 as f32 / 2.0,
+			cy: size.1 as f32 / 2.0,
+		}),
+		cam_geom::ExtrinsicParameters::from_view(
+			&Vector3::new(10.0, 0.0, 0.0),
+			&Vector3::new(0.0, 0.0, 0.0),
+			&Unit::new_normalize(Vector3::new(0.0, 0.0, 1.0)),
+		),
+	);
+
+	pixels.fill(255);
+
+	if draw_edges {
+		for (h1, h2) in layout.edges.iter() {
+			let p1 = layout.points.get(*h1);
+			let p2 = layout.points.get(*h2);
+			let proj = camera.world_to_pixel(&cam_geom::Points::new(unsafe {
+				Matrix2x3::new(
+					*p1.get_unchecked(0),
+					*p1.get_unchecked(1),
+					*p1.get_unchecked(2),
+					*p2.get_unchecked(0),
+					*p2.get_unchecked(1),
+					*p2.get_unchecked(2),
+				)
+			}));
+			draw_line(
+				pixels,
+				size,
+				rowstride,
+				edge_color,
+				unsafe {
+					(
+						proj.data.row(0)[0].to_int_unchecked(),
+						proj.data.row(0)[1].to_int_unchecked(),
+					)
+				},
+				unsafe {
+					(
+						proj.data.row(1)[0].to_int_unchecked(),
+						proj.data.row(1)[1].to_int_unchecked(),
+					)
+				},
 			);
 		}
 	}

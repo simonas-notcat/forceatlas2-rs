@@ -68,6 +68,7 @@ pub struct Layout<T: Coord> {
 	pub(crate) settings: Settings<T>,
 	pub speeds: PointList<T>,
 	pub old_speeds: PointList<T>,
+	pub weights: Option<Vec<T>>,
 
 	pub(crate) fn_attraction: fn(&mut Self),
 	pub(crate) fn_gravity: fn(&mut Self),
@@ -162,8 +163,12 @@ mod test {
 	#[test]
 	fn test_iter_nodes() {
 		for n_nodes in 1usize..16 {
-			let mut layout =
-				Layout::<f32>::from_graph(vec![], Nodes::Degree(n_nodes), Settings::default());
+			let mut layout = Layout::<f32>::from_graph(
+				vec![],
+				Nodes::Degree(n_nodes),
+				None,
+				Settings::default(),
+			);
 			let mut hits = iproduct!(0..n_nodes, 0..n_nodes)
 				.filter(|(n1, n2)| n1 < n2)
 				.collect::<BTreeSet<(usize, usize)>>();
@@ -186,6 +191,7 @@ mod test {
 			let mut layout = Layout::<f32>::from_graph(
 				vec![],
 				Nodes::Mass((1..n_nodes + 1).map(|i| i as f32).collect()),
+				None,
 				Settings::default(),
 			);
 			layout
@@ -233,6 +239,7 @@ mod test {
 			let mut layout = Layout::<f32>::from_graph(
 				vec![],
 				Nodes::Mass((1..n_nodes + 1).map(|i| i as f32).collect()),
+				None,
 				Settings::default(),
 			);
 			layout

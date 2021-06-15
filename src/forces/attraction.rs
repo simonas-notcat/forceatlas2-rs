@@ -5,10 +5,14 @@ use itertools::izip;
 pub fn apply_attraction<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 	let mut di_v = valloc(layout.settings.dimensions);
 	let di = di_v.as_mut_slice();
-	for (n1, n2) in layout.edges.iter() {
+	for (edge, (n1, n2)) in layout.edges.iter().enumerate() {
 		let (n1, n2) = (*n1, *n2);
 		let n1_pos = layout.points.get(n1);
 		layout.points.get_clone_slice(n2, di);
+		let weight = layout.weights.as_ref().map_or_else(
+			|| layout.settings.ka.clone(),
+			|weights| layout.settings.ka.clone() * weights[edge].clone(),
+		);
 
 		let (n1_speed, n2_speed) = layout.speeds.get_2_mut(n1, n2);
 		for i in 0..layout.settings.dimensions {
@@ -18,7 +22,7 @@ pub fn apply_attraction<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 			let n1_pos = unsafe { n1_pos.get_unchecked(i) };
 
 			*di -= n1_pos.clone();
-			*di *= layout.settings.ka.clone();
+			*di *= weight.clone();
 			*n1_speed += di.clone();
 			*n2_speed -= di.clone();
 		}
@@ -26,18 +30,23 @@ pub fn apply_attraction<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 }
 
 pub fn apply_attraction_2d<T: Copy + Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
-	for (n1, n2) in layout.edges.iter() {
+	for (edge, (n1, n2)) in layout.edges.iter().enumerate() {
 		let (n1, n2) = (*n1, *n2);
 
 		let n1_pos = layout.points.get(n1);
 		let n2_pos = layout.points.get(n2);
 
+		let weight = layout
+			.weights
+			.as_ref()
+			.map_or(layout.settings.ka, |weights| {
+				layout.settings.ka * weights[edge]
+			});
+
 		let (n1_speed, n2_speed) = layout.speeds.get_2_mut(n1, n2);
 
-		let dx =
-			unsafe { *n2_pos.get_unchecked(0) - *n1_pos.get_unchecked(0) } * layout.settings.ka;
-		let dy =
-			unsafe { *n2_pos.get_unchecked(1) - *n1_pos.get_unchecked(1) } * layout.settings.ka;
+		let dx = unsafe { *n2_pos.get_unchecked(0) - *n1_pos.get_unchecked(0) } * weight;
+		let dy = unsafe { *n2_pos.get_unchecked(1) - *n1_pos.get_unchecked(1) } * weight;
 
 		unsafe { n1_speed.get_unchecked_mut(0) }.add_assign(dx);
 		unsafe { n1_speed.get_unchecked_mut(1) }.add_assign(dy);
@@ -47,20 +56,21 @@ pub fn apply_attraction_2d<T: Copy + Coord + std::fmt::Debug>(layout: &mut Layou
 }
 
 pub fn apply_attraction_3d<T: Copy + Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
-	for (n1, n2) in layout.edges.iter() {
+	for (edge, (n1, n2)) in layout.edges.iter().enumerate() {
 		let (n1, n2) = (*n1, *n2);
 
 		let n1_pos = layout.points.get(n1);
 		let n2_pos = layout.points.get(n2);
+		let weight = layout
+			.weights
+			.as_ref()
+			.map_or_else(T::one, |weights| weights[edge]);
 
 		let (n1_speed, n2_speed) = layout.speeds.get_2_mut(n1, n2);
 
-		let dx =
-			unsafe { *n2_pos.get_unchecked(0) - *n1_pos.get_unchecked(0) } * layout.settings.ka;
-		let dy =
-			unsafe { *n2_pos.get_unchecked(1) - *n1_pos.get_unchecked(1) } * layout.settings.ka;
-		let dz =
-			unsafe { *n2_pos.get_unchecked(2) - *n1_pos.get_unchecked(2) } * layout.settings.ka;
+		let dx = unsafe { *n2_pos.get_unchecked(0) - *n1_pos.get_unchecked(0) } * weight;
+		let dy = unsafe { *n2_pos.get_unchecked(1) - *n1_pos.get_unchecked(1) } * weight;
+		let dz = unsafe { *n2_pos.get_unchecked(2) - *n1_pos.get_unchecked(2) } * weight;
 
 		unsafe { n1_speed.get_unchecked_mut(0) }.add_assign(dx);
 		unsafe { n1_speed.get_unchecked_mut(1) }.add_assign(dy);

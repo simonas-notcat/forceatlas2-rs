@@ -137,7 +137,7 @@ impl<'a, T: Coord> PointList<T> {
 	/// `n` must be in bounds.
 	pub unsafe fn get_unchecked(&'a self, n: usize) -> &'a Position<T> {
 		let offset = n * self.dimensions;
-		&self.points.get_unchecked(offset..offset + self.dimensions)
+		self.points.get_unchecked(offset..offset + self.dimensions)
 	}
 
 	pub fn get_clone(&self, n: usize) -> Vec<T> {

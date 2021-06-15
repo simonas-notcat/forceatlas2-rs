@@ -47,6 +47,7 @@ fn main() {
 	let mut layout = Layout::<f32>::from_graph(
 		edges,
 		Nodes::Degree(nodes),
+		None,
 		Settings {
 			chunk_size: None,
 			dimensions: 2,

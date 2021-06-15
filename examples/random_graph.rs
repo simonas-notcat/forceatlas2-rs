@@ -27,6 +27,7 @@ fn main() {
 	let mut layout = Layout::<T>::from_graph(
 		edges,
 		Nodes::Degree(NODES),
+		None,
 		Settings {
 			chunk_size: Some(256),
 			dimensions: 2,

@@ -255,6 +255,7 @@ fn main() {
 	let mut layout = Layout::<f64>::from_graph(
 		edges,
 		Nodes::Degree(nb_nodes),
+		None,
 		Settings {
 			chunk_size: Some(256),
 			dimensions: 3,

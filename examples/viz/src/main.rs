@@ -19,10 +19,11 @@ fn main() {
 
 	let mut nodes = 0usize;
 	let mut edges = Vec::<(usize, usize)>::new();
+	let mut weights = Vec::new();
 	for (i, line) in std::io::BufReader::new(file).lines().enumerate() {
 		let line = line.expect("Error reading CSV");
 		let mut columns = line.split(&[' ', '\t', ',', ';'][..]);
-		if let (Some(n1), Some(n2)) = (columns.next(), columns.find(|&c| !c.is_empty())) {
+		if let (Some(n1), Some(n2)) = (columns.next(), columns.next()) {
 			if let (Ok(n1), Ok(n2)) = (n1.parse(), n2.parse()) {
 				if n1 > nodes {
 					nodes = n1;
@@ -32,6 +33,14 @@ fn main() {
 				}
 				if n1 != n2 {
 					edges.push(if n1 < n2 { (n1, n2) } else { (n2, n1) });
+					weights.push(columns.next().map_or(1.0, |w| {
+						w.parse().unwrap_or_else(|_| {
+							eprintln!("Ignored weight line {} has bad number format", i);
+							1.0
+						})
+					}));
+				} else {
+					eprintln!("Ignored line {} has loop", i);
 				}
 			} else {
 				eprintln!("Ignored line {} has bad number format", i);
@@ -59,6 +68,7 @@ fn main() {
 	let layout = Arc::new(RwLock::new(Layout::<T>::from_graph(
 		edges,
 		Nodes::Degree(nodes),
+		Some(weights),
 		settings.clone(),
 	)));
 
