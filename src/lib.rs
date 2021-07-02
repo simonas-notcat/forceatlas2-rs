@@ -330,7 +330,9 @@ mod tests {
 	fn test_barnes_hut_2d() {
 		let mut layout = Layout::<f64>::from_position_graph(
 			vec![(0, 1)],
-			vec![vec![-1.0, -1.0].as_slice(), vec![1.0, 1.0].as_slice()].into_iter(),
+			Nodes::Degree(2),
+			vec![-1.0, -1.0, 1.0, 1.0],
+			None,
 			Settings::default(),
 		);
 
