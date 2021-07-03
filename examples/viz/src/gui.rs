@@ -45,7 +45,7 @@ fn build_ui(
 	settings: Arc<RwLock<Settings<T>>>,
 	pixbuf: Arc<RwLock<Option<Pixbuf>>>,
 	draw_edges: Arc<RwLock<bool>>,
-	edge_color: Arc<RwLock<(u8, u8, u8)>>,
+	edge_color: Arc<RwLock<(u8, u8, u8, u8)>>,
 	draw_nodes: Arc<RwLock<bool>>,
 	node_color: Arc<RwLock<(u8, u8, u8)>>,
 	zoom: Arc<RwLock<T>>,
@@ -96,7 +96,7 @@ fn build_ui(
 			red: edge_color.0 as f64 / 255.,
 			green: edge_color.1 as f64 / 255.,
 			blue: edge_color.2 as f64 / 255.,
-			alpha: 1.,
+			alpha: edge_color.3 as f64 / 255.,
 		}
 	});
 	draw_nodes_input.set_active(*draw_nodes.read().unwrap());
@@ -158,7 +158,7 @@ fn build_ui(
 		let zoom_input = zoom_input.clone();
 		let zoom = zoom.clone();
 		move |_, event| {
-			#[allow(clippy::no_effect)]
+			#[allow(clippy::no_effect, unused_must_use)]
 			{
 				&graph_gesture_drag; // avoid GC
 			}
@@ -346,6 +346,7 @@ fn build_ui(
 				(c.red * 255.) as u8,
 				(c.green * 255.) as u8,
 				(c.blue * 255.) as u8,
+				(c.alpha * 255.) as u8,
 			);
 			tx.write().unwrap().redraw = true;
 		}
@@ -463,7 +464,7 @@ pub fn run(
 	}));
 	let pixbuf = Arc::new(RwLock::new(None));
 	let draw_edges = Arc::new(RwLock::new(true));
-	let edge_color = Arc::new(RwLock::new((5, 5, 5)));
+	let edge_color = Arc::new(RwLock::new((0, 0, 0, 20)));
 	let draw_nodes = Arc::new(RwLock::new(true));
 	let node_color = Arc::new(RwLock::new((255, 0, 0)));
 	let zoom = Arc::new(RwLock::new(1.0));

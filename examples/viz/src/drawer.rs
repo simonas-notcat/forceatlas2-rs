@@ -17,12 +17,17 @@ pub enum NodeColor {
 	Mass(RgbGradient),
 }
 
+// https://www.codeguru.com/cpp/cpp/algorithms/general/article.php/c15989/Tip-An-Optimized-Formula-for-Alpha-Blending-Pixels.htm
+pub fn blend(s: u8, d: u8, a: u8) -> u8 {
+	(((s as u16 * a as u16) + (d as u16 * (255 - a) as u16)) >> 8) as u8
+}
+
 // https://github.com/deep110/ada/blob/master/src/shape/line2d.rs
 fn draw_line(
 	buffer: &mut [u8],
 	size: (i32, i32),
 	rowstride: i32,
-	color: (u8, u8, u8),
+	color: (u8, u8, u8, u8),
 	mut p1: (i32, i32),
 	mut p2: (i32, i32),
 ) {
@@ -44,9 +49,9 @@ fn draw_line(
 		for x in p1.0..(p2.0 + 1) {
 			if y >= 0 && y < size.0 && x >= 0 && x < size.1 {
 				let offset = (x * rowstride + y * 3) as usize;
-				buffer[offset] = buffer[offset].saturating_sub(color.0);
-				buffer[offset + 1] = buffer[offset + 1].saturating_sub(color.1);
-				buffer[offset + 2] = buffer[offset + 2].saturating_sub(color.2);
+				buffer[offset] = blend(color.0, buffer[offset], color.3);
+				buffer[offset + 1] = blend(color.1, buffer[offset], color.3);
+				buffer[offset + 2] = blend(color.2, buffer[offset], color.3);
 			}
 
 			error += derror;
@@ -59,9 +64,9 @@ fn draw_line(
 		for x in p1.0..(p2.0 + 1) {
 			if x >= 0 && x < size.0 && y >= 0 && y < size.1 {
 				let offset = (y * rowstride + x * 3) as usize;
-				buffer[offset] = buffer[offset].saturating_sub(color.0);
-				buffer[offset + 1] = buffer[offset + 1].saturating_sub(color.1);
-				buffer[offset + 2] = buffer[offset + 2].saturating_sub(color.2);
+				buffer[offset] = blend(color.0, buffer[offset], color.3);
+				buffer[offset + 1] = blend(color.1, buffer[offset], color.3);
+				buffer[offset + 2] = blend(color.2, buffer[offset], color.3);
 			}
 
 			error += derror;
@@ -135,7 +140,7 @@ pub fn draw_graph(
 	pixels: &mut [u8],
 	rowstride: i32,
 	draw_edges: bool,
-	edge_color: (u8, u8, u8),
+	edge_color: (u8, u8, u8, u8),
 	draw_nodes: bool,
 	node_color: (u8, u8, u8),
 ) {
@@ -227,7 +232,7 @@ pub fn _draw_graph_3d(
 	pixels: &mut [u8],
 	rowstride: i32,
 	draw_edges: bool,
-	edge_color: (u8, u8, u8),
+	edge_color: (u8, u8, u8, u8),
 ) {
 	let camera = cam_geom::Camera::new(
 		cam_geom::IntrinsicParametersPerspective::from(cam_geom::PerspectiveParams {
