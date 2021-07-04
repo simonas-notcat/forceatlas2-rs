@@ -65,6 +65,7 @@ fn build_ui(
 	let compute_button: gtk::ToggleButton = builder.get_object("bt_compute").unwrap();
 	let reset_button: gtk::Button = builder.get_object("bt_reset").unwrap();
 	let save_img_button: gtk::Button = builder.get_object("bt_save_img").unwrap();
+	let copy_img_button: gtk::Button = builder.get_object("bt_copy_img").unwrap();
 	let chunk_size_input: gtk::Entry = builder.get_object("chunk_size").unwrap();
 	let ka_input: gtk::Entry = builder.get_object("ka").unwrap();
 	let kg_input: gtk::Entry = builder.get_object("kg").unwrap();
@@ -252,6 +253,15 @@ fn build_ui(
 					eprintln!("Error while saving: {:?}", e);
 				}
 				save_img_window.hide()
+			}
+		}
+	});
+
+	copy_img_button.connect_clicked({
+		let pixbuf = pixbuf.clone();
+		move |_| {
+			if let Some(pixbuf) = pixbuf.read().unwrap().as_ref() {
+				gtk::Clipboard::get(&gdk::SELECTION_CLIPBOARD).set_image(&pixbuf.0);
 			}
 		}
 	});
