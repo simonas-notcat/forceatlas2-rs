@@ -3,6 +3,10 @@ use crate::{iter::*, layout::*, util::*};
 use itertools::izip;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
+#[cfg(target_arch = "x86")]
+use std::arch::x86::*;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
 
 pub fn apply_repulsion<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 	let kr = layout.settings.kr.clone();
@@ -162,11 +166,6 @@ pub fn apply_repulsion_2d_parallel<T: Copy + Coord + std::fmt::Debug + Send + Sy
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn apply_repulsion_2d_simd_f64(layout: &mut Layout<f64>) {
-	#[cfg(target_arch = "x86")]
-	use std::arch::x86::*;
-	#[cfg(target_arch = "x86_64")]
-	use std::arch::x86_64::*;
-
 	for (n1, (n1_mass, n1_pos_s)) in layout.masses.iter().zip(layout.points.iter()).enumerate() {
 		let mut n2_iter = layout.points.iter();
 		let n1_mass = n1_mass + 1.;
@@ -325,11 +324,6 @@ pub fn apply_repulsion_2d_simd_f64(layout: &mut Layout<f64>) {
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn apply_repulsion_2d_simd_f32(layout: &mut Layout<f32>) {
-	#[cfg(target_arch = "x86")]
-	use std::arch::x86::*;
-	#[cfg(target_arch = "x86_64")]
-	use std::arch::x86_64::*;
-
 	for (n1, (n1_mass, n1_pos_s)) in layout.masses.iter().zip(layout.points.iter()).enumerate() {
 		let mut n2_iter = layout.points.iter();
 		let n1_mass = n1_mass + 1.0f32;
@@ -538,11 +532,6 @@ pub fn apply_repulsion_2d_simd_f32(layout: &mut Layout<f32>) {
 
 #[cfg(all(feature = "parallel", any(target_arch = "x86", target_arch = "x86_64")))]
 pub fn apply_repulsion_2d_simd_f64_parallel(layout: &mut Layout<f64>) {
-	#[cfg(target_arch = "x86")]
-	use std::arch::x86::*;
-	#[cfg(target_arch = "x86_64")]
-	use std::arch::x86_64::*;
-
 	let chunk_size = layout.settings.chunk_size.unwrap();
 	let kr = layout.settings.kr;
 	for chunk_iter in layout.iter_par_simd_nodes::<2>(chunk_size) {
@@ -608,8 +597,9 @@ pub fn apply_repulsion_2d_simd_f64_parallel(layout: &mut Layout<f64>) {
 				}
 
 				// Remaining iteration
-				let layout = unsafe { n1.n2_iter.layout.0.as_mut() };
-				for n2 in n1.n2_iter.ind..n2_end {
+				if n1.n2_iter.ind < n2_end {
+					let layout = unsafe { n1.n2_iter.layout.0.as_mut() };
+					let n2 = n1.n2_iter.ind;
 					let n2_pos = unsafe { layout.points.get_unchecked(n2) };
 
 					let dx = unsafe { *n2_pos.get_unchecked(0) - *n1.pos.get_unchecked(0) };
@@ -625,10 +615,12 @@ pub fn apply_repulsion_2d_simd_f64_parallel(layout: &mut Layout<f64>) {
 					let n2_speed = layout.speeds.get_mut(n2);
 					let vx = f * dx;
 					let vy = f * dy;
-					unsafe { *n1.speed }.sub_assign(vx); // n1_speed[0] -= f * dx
-					unsafe { *n1.speed.add(1) }.sub_assign(vy); // n1_speed[1] -= f * dy
-					unsafe { n2_speed.get_unchecked_mut(0) }.add_assign(vx); // n2_speed[0] += f * dx
-					unsafe { n2_speed.get_unchecked_mut(1) }.add_assign(vy); // n2_speed[1] += f * dy
+					unsafe {
+						*n1.speed -= vx;
+						*n1.speed.add(1) -= vy;
+					}
+					unsafe { n2_speed.get_unchecked_mut(0) }.add_assign(vx);
+					unsafe { n2_speed.get_unchecked_mut(1) }.add_assign(vy);
 				}
 			}
 		});
@@ -637,11 +629,6 @@ pub fn apply_repulsion_2d_simd_f64_parallel(layout: &mut Layout<f64>) {
 
 #[cfg(all(feature = "parallel", any(target_arch = "x86", target_arch = "x86_64")))]
 pub fn apply_repulsion_2d_simd_f32_parallel(layout: &mut Layout<f32>) {
-	#[cfg(target_arch = "x86")]
-	use std::arch::x86::*;
-	#[cfg(target_arch = "x86_64")]
-	use std::arch::x86_64::*;
-
 	let chunk_size = layout.settings.chunk_size.unwrap();
 	let kr = layout.settings.kr;
 	for chunk_iter in layout.iter_par_simd_nodes::<4>(chunk_size) {
@@ -735,10 +722,12 @@ pub fn apply_repulsion_2d_simd_f32_parallel(layout: &mut Layout<f32>) {
 					let n2_speed = layout.speeds.get_mut(n2);
 					let vx = f * dx;
 					let vy = f * dy;
-					unsafe { *n1.speed }.sub_assign(vx); // n1_speed[0] -= f * dx
-					unsafe { *n1.speed.add(1) }.sub_assign(vy); // n1_speed[1] -= f * dy
-					unsafe { n2_speed.get_unchecked_mut(0) }.add_assign(vx); // n2_speed[0] += f * dx
-					unsafe { n2_speed.get_unchecked_mut(1) }.add_assign(vy); // n2_speed[1] += f * dy
+					unsafe {
+						*n1.speed -= vx;
+						*n1.speed.add(1) -= vy;
+					}
+					unsafe { n2_speed.get_unchecked_mut(0) }.add_assign(vx);
+					unsafe { n2_speed.get_unchecked_mut(1) }.add_assign(vy);
 				}
 			}
 		});
