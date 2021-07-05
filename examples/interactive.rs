@@ -123,6 +123,7 @@ fn main() {
 		kr: 0.002,
 		lin_log: false,
 		prevent_overlapping: None,
+		speed: 0.1,
 		strong_gravity: false,
 	};
 

@@ -206,19 +206,21 @@ where
 				.iter()
 				.zip(old_speed.iter())
 				.map(|(s, old_s)| (s.clone() - old_s.clone()).pow_n(2u32))
-				.sum::<T>();
+				.sum::<T>()
+				.sqrt();
 			let traction = speed
 				.iter()
 				.zip(old_speed.iter())
 				.map(|(s, old_s)| (s.clone() + old_s.clone()).pow_n(2u32))
-				.sum::<T>();
-			let f = (traction).ln_1p() / (swinging.sqrt() + T::one());
+				.sum::<T>()
+				.sqrt();
+
+			let f = traction.ln_1p() / (swinging.sqrt() + T::one()) * self.settings.speed.clone();
 
 			pos.iter_mut()
 				.zip(speed.iter_mut())
 				.for_each(|(pos, speed)| {
-					*speed *= f.clone();
-					*pos += speed.clone();
+					*pos += speed.clone() * f.clone();
 				});
 		}
 	}
@@ -366,6 +368,7 @@ mod tests {
 				kr: 0.01,
 				lin_log: false,
 				prevent_overlapping: None,
+				speed: 1.0,
 				strong_gravity: false,
 				#[cfg(feature = "barnes_hut")]
 				barnes_hut: None,

@@ -37,6 +37,7 @@ fn main() {
 			kr: 0.1,
 			lin_log: false,
 			prevent_overlapping: None,
+			speed: 1.0,
 			strong_gravity: false,
 		},
 	);

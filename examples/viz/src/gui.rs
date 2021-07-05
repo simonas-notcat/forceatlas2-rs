@@ -70,6 +70,7 @@ fn build_ui(
 	let ka_input: gtk::Entry = builder.get_object("ka").unwrap();
 	let kg_input: gtk::Entry = builder.get_object("kg").unwrap();
 	let kr_input: gtk::Entry = builder.get_object("kr").unwrap();
+	let speed_input: gtk::Entry = builder.get_object("speed").unwrap();
 	let draw_edges_input: gtk::CheckButton = builder.get_object("draw_edges").unwrap();
 	let edge_color_input: gtk::ColorButton = builder.get_object("edge_color").unwrap();
 	let draw_nodes_input: gtk::CheckButton = builder.get_object("draw_nodes").unwrap();
@@ -325,11 +326,29 @@ fn build_ui(
 	});
 
 	kr_input.connect_changed({
+		let layout = layout.clone();
+		let settings = settings.clone();
 		move |entry| {
 			if let Ok(kr) = entry.get_text().parse() {
 				entry.override_background_color(gtk::StateFlags::NORMAL, None);
 				if let Ok(mut settings) = settings.write() {
 					settings.kr = kr;
+					if let Ok(mut layout) = layout.write() {
+						layout.set_settings(settings.clone());
+					}
+				}
+			} else {
+				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
+			}
+		}
+	});
+
+	speed_input.connect_changed({
+		move |entry| {
+			if let Ok(speed) = entry.get_text().parse() {
+				entry.override_background_color(gtk::StateFlags::NORMAL, None);
+				if let Ok(mut settings) = settings.write() {
+					settings.speed = speed;
 					if let Ok(mut layout) = layout.write() {
 						layout.set_settings(settings.clone());
 					}

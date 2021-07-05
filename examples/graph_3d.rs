@@ -264,6 +264,7 @@ fn main() {
 			kg: 0.01,
 			kr: 0.02,
 			lin_log: false,
+			speed: 1.0,
 			prevent_overlapping: None, //Some((NODE_RADIUS as f64, 100.0)),
 			strong_gravity: false,
 		},

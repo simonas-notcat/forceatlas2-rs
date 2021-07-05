@@ -56,6 +56,7 @@ fn main() {
 			kg: 0.001,
 			kr: 0.002,
 			lin_log: false,
+			speed: 1.0,
 			prevent_overlapping: None,
 			strong_gravity: false,
 		},

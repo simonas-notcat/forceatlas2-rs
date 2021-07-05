@@ -37,6 +37,8 @@ pub struct Settings<T: Coord> {
 	/// `node_size` is the radius around a node where the repulsion coefficient is `kr_prime`.
 	/// `kr_prime` is arbitrarily set to `100.0` in Gephi implementation.
 	pub prevent_overlapping: Option<(T, T)>,
+	/// Speed factor
+	pub speed: T,
 	/// Gravity does not decrease with distance, resulting in a more compact graph.
 	pub strong_gravity: bool,
 }
@@ -55,6 +57,7 @@ impl<T: Coord> Default for Settings<T> {
 			kr: T::one(),
 			lin_log: false,
 			prevent_overlapping: None,
+			speed: T::from(0.01).unwrap_or_else(T::one),
 			strong_gravity: false,
 		}
 	}
@@ -232,7 +235,7 @@ mod test {
 		rayon::ThreadPoolBuilder::new()
 			.num_threads(1)
 			.build_global()
-			.unwrap();
+			.ok();
 
 		for n_nodes in 1usize..32 {
 			println!("######## {} nodes", n_nodes);
