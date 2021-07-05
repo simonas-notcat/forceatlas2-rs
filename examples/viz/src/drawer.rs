@@ -143,6 +143,7 @@ pub fn draw_graph(
 	edge_color: (u8, u8, u8, u8),
 	draw_nodes: bool,
 	node_color: (u8, u8, u8),
+	node_radius: i32,
 ) {
 	pixels.fill(255);
 
@@ -220,7 +221,7 @@ pub fn draw_graph(
 						)
 					}
 				},
-				2,
+				node_radius,
 			);
 		}
 	}

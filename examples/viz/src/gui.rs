@@ -48,6 +48,7 @@ fn build_ui(
 	edge_color: Arc<RwLock<(u8, u8, u8, u8)>>,
 	draw_nodes: Arc<RwLock<bool>>,
 	node_color: Arc<RwLock<(u8, u8, u8)>>,
+	node_radius: Arc<RwLock<i32>>,
 	zoom: Arc<RwLock<T>>,
 	nb_iters: Arc<RwLock<usize>>,
 ) {
@@ -75,6 +76,7 @@ fn build_ui(
 	let edge_color_input: gtk::ColorButton = builder.get_object("edge_color").unwrap();
 	let draw_nodes_input: gtk::CheckButton = builder.get_object("draw_nodes").unwrap();
 	let node_color_input: gtk::ColorButton = builder.get_object("node_color").unwrap();
+	let node_radius_input: gtk::Entry = builder.get_object("node_radius").unwrap();
 	let zoom_input: gtk::Entry = builder.get_object("zoom").unwrap();
 	let nb_iters_disp: gtk::Label = builder.get_object("nb_iters").unwrap();
 
@@ -90,6 +92,7 @@ fn build_ui(
 		ka_input.set_text(&settings.ka.to_string());
 		kg_input.set_text(&settings.kg.to_string());
 		kr_input.set_text(&settings.kr.to_string());
+		speed_input.set_text(&settings.speed.to_string());
 	}
 	draw_edges_input.set_active(*draw_edges.read().unwrap());
 	edge_color_input.set_rgba({
@@ -111,6 +114,7 @@ fn build_ui(
 			alpha: 1.,
 		}
 	});
+	node_radius_input.set_text(&node_radius.read().unwrap().to_string());
 	zoom_input.set_text(&zoom.read().unwrap().to_string());
 
 	{
@@ -402,6 +406,22 @@ fn build_ui(
 		}
 	});
 
+	node_radius_input.connect_changed({
+		let tx = tx.clone();
+		move |entry| {
+			if let Ok(v) = entry.get_text().parse() {
+				entry.override_background_color(gtk::StateFlags::NORMAL, None);
+				let mut node_radius = node_radius.write().unwrap();
+				if *node_radius != v {
+					tx.write().unwrap().redraw = true;
+				}
+				*node_radius = v;
+			} else {
+				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
+			}
+		}
+	});
+
 	zoom_input.connect_changed({
 		let pixbuf = pixbuf.clone();
 		let tx = tx.clone();
@@ -496,6 +516,7 @@ pub fn run(
 	let edge_color = Arc::new(RwLock::new((0, 0, 0, 20)));
 	let draw_nodes = Arc::new(RwLock::new(true));
 	let node_color = Arc::new(RwLock::new((255, 0, 0)));
+	let node_radius = Arc::new(RwLock::new(2));
 	let zoom = Arc::new(RwLock::new(1.0));
 
 	application.connect_activate({
@@ -506,6 +527,7 @@ pub fn run(
 		let edge_color = edge_color.clone();
 		let draw_nodes = draw_nodes.clone();
 		let node_color = node_color.clone();
+		let node_radius = node_radius.clone();
 		let msg_from_gtk = msg_from_gtk.clone();
 		move |app| {
 			build_ui(
@@ -520,6 +542,7 @@ pub fn run(
 				edge_color.clone(),
 				draw_nodes.clone(),
 				node_color.clone(),
+				node_radius.clone(),
 				zoom.clone(),
 				nb_iters.clone(),
 			)
@@ -539,6 +562,7 @@ pub fn run(
 					*edge_color.read().unwrap(),
 					*draw_nodes.read().unwrap(),
 					*node_color.read().unwrap(),
+					*node_radius.read().unwrap(),
 				);
 				tx.send(MsgToGtk::Update).unwrap();
 			}
@@ -568,6 +592,7 @@ pub fn run(
 						*edge_color.read().unwrap(),
 						*draw_nodes.read().unwrap(),
 						*node_color.read().unwrap(),
+						*node_radius.read().unwrap(),
 					);
 					tx.send(MsgToGtk::Update).unwrap();
 				}
