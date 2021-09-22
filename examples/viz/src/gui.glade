@@ -48,7 +48,7 @@
             <property name="can-focus">False</property>
             <property name="orientation">vertical</property>
             <child>
-              <!-- n-columns=2 n-rows=9 -->
+              <!-- n-columns=2 n-rows=10 -->
               <object class="GtkGrid">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
@@ -195,7 +195,7 @@
                         <property name="draw-indicator">True</property>
                         <child internal-child="accessible">
                           <object class="AtkObject" id="draw_edges-atkobject">
-                            <property name="AtkObject::accessible-description" translatable="yes">Draw edges</property>
+                            <property name="AtkObject::accessible-name" translatable="yes">Draw edges</property>
                           </object>
                         </child>
                       </object>
@@ -215,7 +215,7 @@
                         <property name="show-editor">True</property>
                         <child internal-child="accessible">
                           <object class="AtkObject" id="edge_color-atkobject">
-                            <property name="AtkObject::accessible-description" translatable="yes">Edge color</property>
+                            <property name="AtkObject::accessible-name" translatable="yes">Edge color</property>
                           </object>
                         </child>
                       </object>
@@ -244,7 +244,7 @@
                   </object>
                   <packing>
                     <property name="left-attach">1</property>
-                    <property name="top-attach">8</property>
+                    <property name="top-attach">9</property>
                   </packing>
                 </child>
                 <child>
@@ -257,7 +257,7 @@
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
-                    <property name="top-attach">8</property>
+                    <property name="top-attach">9</property>
                   </packing>
                 </child>
                 <child>
@@ -274,7 +274,7 @@
                         <property name="draw-indicator">True</property>
                         <child internal-child="accessible">
                           <object class="AtkObject" id="draw_nodes-atkobject">
-                            <property name="AtkObject::accessible-description" translatable="yes">Draw nodes</property>
+                            <property name="AtkObject::accessible-name" translatable="yes">Draw nodes</property>
                           </object>
                         </child>
                       </object>
@@ -293,7 +293,7 @@
                         <property name="show-editor">True</property>
                         <child internal-child="accessible">
                           <object class="AtkObject" id="node_color-atkobject">
-                            <property name="AtkObject::accessible-description" translatable="yes">Node color</property>
+                            <property name="AtkObject::accessible-name" translatable="yes">Node color</property>
                           </object>
                         </child>
                       </object>
@@ -313,7 +313,7 @@
                         <property name="input-purpose">number</property>
                         <child internal-child="accessible">
                           <object class="AtkObject" id="node_radius-atkobject">
-                            <property name="AtkObject::accessible-description" translatable="yes">Node radius</property>
+                            <property name="AtkObject::accessible-name" translatable="yes">Node radius</property>
                           </object>
                         </child>
                       </object>
@@ -362,6 +362,9 @@
                     <property name="max-length">20</property>
                     <property name="text" translatable="yes">0.01</property>
                     <property name="input-purpose">number</property>
+                    <accessibility>
+                      <relation type="labelled-by" target="speed_label"/>
+                    </accessibility>
                   </object>
                   <packing>
                     <property name="left-attach">1</property>
@@ -392,6 +395,35 @@
                     <property name="top-attach">5</property>
                   </packing>
                 </child>
+                <child>
+                  <object class="GtkLabel" id="bg_color_label">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="margin-end">2</property>
+                    <property name="label" translatable="yes">Background</property>
+                    <property name="xalign">1</property>
+                  </object>
+                  <packing>
+                    <property name="left-attach">0</property>
+                    <property name="top-attach">8</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkColorButton" id="bg_color">
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <property name="receives-default">True</property>
+                    <property name="title" translatable="yes">Background color</property>
+                    <property name="show-editor">True</property>
+                    <accessibility>
+                      <relation type="labelled-by" target="bg_color_label"/>
+                    </accessibility>
+                  </object>
+                  <packing>
+                    <property name="left-attach">1</property>
+                    <property name="top-attach">8</property>
+                  </packing>
+                </child>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -400,93 +432,123 @@
               </packing>
             </child>
             <child>
-              <!-- n-columns=2 n-rows=3 -->
-              <object class="GtkGrid">
+              <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <child>
-                  <object class="GtkLabel" id="nb_iters_label">
+                  <!-- n-columns=2 n-rows=3 -->
+                  <object class="GtkGrid">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="margin-end">2</property>
-                    <property name="label" translatable="yes">Iterations:</property>
-                    <property name="xalign">1</property>
+                    <child>
+                      <object class="GtkLabel" id="nb_iters_label">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="margin-end">2</property>
+                        <property name="label" translatable="yes">Iterations:</property>
+                        <property name="xalign">1</property>
+                      </object>
+                      <packing>
+                        <property name="left-attach">0</property>
+                        <property name="top-attach">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="nb_nodes_label">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="margin-end">2</property>
+                        <property name="label" translatable="yes">Nodes:</property>
+                        <property name="xalign">1</property>
+                      </object>
+                      <packing>
+                        <property name="left-attach">0</property>
+                        <property name="top-attach">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="nb_edges_label">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="margin-end">2</property>
+                        <property name="label" translatable="yes">Edges:</property>
+                        <property name="xalign">1</property>
+                      </object>
+                      <packing>
+                        <property name="left-attach">0</property>
+                        <property name="top-attach">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="nb_iters">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">0</property>
+                        <property name="selectable">True</property>
+                        <property name="xalign">1</property>
+                        <accessibility>
+                          <relation type="labelled-by" target="nb_iters_label"/>
+                        </accessibility>
+                      </object>
+                      <packing>
+                        <property name="left-attach">1</property>
+                        <property name="top-attach">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="nb_nodes">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="selectable">True</property>
+                        <property name="xalign">1</property>
+                        <accessibility>
+                          <relation type="labelled-by" target="nb_nodes_label"/>
+                        </accessibility>
+                      </object>
+                      <packing>
+                        <property name="left-attach">1</property>
+                        <property name="top-attach">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="nb_edges">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="selectable">True</property>
+                        <property name="xalign">1</property>
+                        <accessibility>
+                          <relation type="labelled-by" target="nb_edges_label"/>
+                        </accessibility>
+                      </object>
+                      <packing>
+                        <property name="left-attach">1</property>
+                        <property name="top-attach">2</property>
+                      </packing>
+                    </child>
                   </object>
                   <packing>
-                    <property name="left-attach">0</property>
-                    <property name="top-attach">0</property>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="nb_nodes_label">
+                  <object class="GtkEntry" id="iters_stop">
                     <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="margin-end">2</property>
-                    <property name="label" translatable="yes">Nodes:</property>
-                    <property name="xalign">1</property>
+                    <property name="can-focus">True</property>
+                    <property name="tooltip-text" translatable="yes">Stop computing after this number of iterations (empty for no limit)</property>
+                    <property name="max-length">20</property>
+                    <property name="input-purpose">number</property>
+                    <child internal-child="accessible">
+                      <object class="AtkObject" id="iters_stop-atkobject">
+                        <property name="AtkObject::accessible-name" translatable="yes">Stop iterations</property>
+                      </object>
+                    </child>
                   </object>
                   <packing>
-                    <property name="left-attach">0</property>
-                    <property name="top-attach">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="nb_edges_label">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="margin-end">2</property>
-                    <property name="label" translatable="yes">Edges:</property>
-                    <property name="xalign">1</property>
-                  </object>
-                  <packing>
-                    <property name="left-attach">0</property>
-                    <property name="top-attach">2</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="nb_iters">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">0</property>
-                    <property name="selectable">True</property>
-                    <property name="xalign">1</property>
-                    <accessibility>
-                      <relation type="labelled-by" target="nb_iters_label"/>
-                    </accessibility>
-                  </object>
-                  <packing>
-                    <property name="left-attach">1</property>
-                    <property name="top-attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="nb_nodes">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="selectable">True</property>
-                    <property name="xalign">1</property>
-                    <accessibility>
-                      <relation type="labelled-by" target="nb_nodes_label"/>
-                    </accessibility>
-                  </object>
-                  <packing>
-                    <property name="left-attach">1</property>
-                    <property name="top-attach">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="nb_edges">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="selectable">True</property>
-                    <property name="xalign">1</property>
-                    <accessibility>
-                      <relation type="labelled-by" target="nb_edges_label"/>
-                    </accessibility>
-                  </object>
-                  <packing>
-                    <property name="left-attach">1</property>
-                    <property name="top-attach">2</property>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
                   </packing>
                 </child>
               </object>
@@ -525,6 +587,19 @@
                     <property name="expand">True</property>
                     <property name="fill">True</property>
                     <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="bt_export">
+                    <property name="label" translatable="yes">Export</property>
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <property name="receives-default">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
                   </packing>
                 </child>
               </object>
@@ -616,6 +691,102 @@
         </child>
       </object>
     </child>
+  </object>
+  <object class="GtkFileChooserDialog" id="export_window">
+    <property name="can-focus">False</property>
+    <property name="title" translatable="yes">Export layout</property>
+    <property name="type-hint">dialog</property>
+    <property name="do-overwrite-confirmation">True</property>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can-focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can-focus">False</property>
+            <property name="layout-style">end</property>
+            <child>
+              <object class="GtkButton" id="siw_bt_cancel1">
+                <property name="label" translatable="yes">Cancel</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="siw_bt_save1">
+                <property name="label" translatable="yes">Save</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <child>
+              <object class="GtkEntry" id="siw_filename1">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="text" translatable="yes">graph.png</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="siw_filetype1">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="model">liststore1</property>
+                <property name="active">0</property>
+                <property name="id-column">1</property>
+                <child>
+                  <object class="GtkCellRendererText" id="type1"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <accessibility>
+      <relation type="subwindow-of" target="window"/>
+    </accessibility>
   </object>
   <object class="GtkFileChooserDialog" id="save_img_window">
     <property name="can-focus">False</property>

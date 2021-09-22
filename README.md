@@ -33,7 +33,7 @@ The file `examples/wot.csv` lists the edges of a directed graph, in two columns.
 
 ### GTK viewer
 
-You need GTK installed.
+Interactive viewer. You need GTK installed.
 
     RUSTFLAGS='-C target-feature=+avx2' cargo run --release -p viz -- examples/wot.csv
 

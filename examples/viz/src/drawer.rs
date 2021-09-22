@@ -22,6 +22,40 @@ pub fn blend(s: u8, d: u8, a: u8) -> u8 {
 	(((s as u16 * a as u16) + (d as u16 * (255 - a) as u16)) >> 8) as u8
 }
 
+//#[cfg(not(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "avx2")))]
+pub fn blend_rgb(buffer: &mut [u8], offset: usize, color: (u8, u8, u8, u8)) {
+	assert!(offset < usize::MAX - 1);
+	assert!(offset + 2 < buffer.len());
+
+	let ca = (255 - color.3) as u16;
+	buffer[offset] =
+		(((color.0 as u16 * color.3 as u16) + (buffer[offset] as u16 * ca)) >> 8) as u8;
+	buffer[offset + 1] =
+		(((color.1 as u16 * color.3 as u16) + (buffer[offset + 1] as u16 * ca)) >> 8) as u8;
+	buffer[offset + 2] =
+		(((color.2 as u16 * color.3 as u16) + (buffer[offset + 2] as u16 * ca)) >> 8) as u8;
+}
+
+/*#[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+pub fn blend_rgb(buffer: &mut [u8], offset: usize, color: (u8, u8, u8, u8)) {
+	use std::arch::x86_64::*;
+
+	assert!(offset < usize::MAX - 1);
+	assert!(offset + 2 < buffer.len());
+
+	let ca = (255 - color.3) as u16;
+
+	let d = unsafe {_mm_set_epi16(0, 0, 0, 0, 0, buffer[offset+2], buffer[offset+1], buffer[offset])};
+	let a = unsafe {_mm_set1_epi16(color.3 as i16)};
+	let ca = unsafe {_mm_set1_epi16(color.3 as i16)};
+
+
+
+	buffer[offset] = (((color.0 as u16 * color.3 as u16) + (buffer[offset] as u16 * ca)) >> 8) as u8;
+	buffer[offset + 1] = (((color.1 as u16 * color.3 as u16) + (buffer[offset+1] as u16 * ca)) >> 8) as u8;
+	buffer[offset + 2] = (((color.2 as u16 * color.3 as u16) + (buffer[offset+2] as u16 * ca)) >> 8) as u8;
+}*/
+
 // https://github.com/deep110/ada/blob/master/src/shape/line2d.rs
 fn draw_line(
 	buffer: &mut [u8],
@@ -49,9 +83,7 @@ fn draw_line(
 		for x in p1.0..(p2.0 + 1) {
 			if y >= 0 && y < size.0 && x >= 0 && x < size.1 {
 				let offset = (x * rowstride + y * 3) as usize;
-				buffer[offset] = blend(color.0, buffer[offset], color.3);
-				buffer[offset + 1] = blend(color.1, buffer[offset], color.3);
-				buffer[offset + 2] = blend(color.2, buffer[offset], color.3);
+				blend_rgb(buffer, offset, color);
 			}
 
 			error += derror;
@@ -144,8 +176,12 @@ pub fn draw_graph(
 	draw_nodes: bool,
 	node_color: (u8, u8, u8),
 	node_radius: i32,
+	bg_color: (u8, u8, u8),
 ) {
-	pixels.fill(255);
+	pixels
+		.iter_mut()
+		.zip(IntoIterator::into_iter([bg_color.0, bg_color.1, bg_color.2]).cycle())
+		.for_each(|(px, bg)| *px = bg);
 
 	let mut min_v = layout.points.get_clone(0);
 	let mut max_v = min_v.clone();

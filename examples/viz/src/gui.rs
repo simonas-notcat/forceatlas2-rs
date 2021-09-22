@@ -2,7 +2,7 @@ use crate::T;
 
 use forceatlas2::*;
 use gio::prelude::*;
-use gtk::prelude::*;
+use gtk::{prelude::*, SettingsExt};
 use rand::Rng;
 use static_rc::StaticRc;
 use std::{
@@ -49,6 +49,7 @@ fn build_ui(
 	draw_nodes: Arc<RwLock<bool>>,
 	node_color: Arc<RwLock<(u8, u8, u8)>>,
 	node_radius: Arc<RwLock<i32>>,
+	bg_color: Arc<RwLock<(u8, u8, u8)>>,
 	zoom: Arc<RwLock<T>>,
 	nb_iters: Arc<RwLock<usize>>,
 ) {
@@ -77,6 +78,7 @@ fn build_ui(
 	let draw_nodes_input: gtk::CheckButton = builder.get_object("draw_nodes").unwrap();
 	let node_color_input: gtk::ColorButton = builder.get_object("node_color").unwrap();
 	let node_radius_input: gtk::Entry = builder.get_object("node_radius").unwrap();
+	let bg_color_input: gtk::ColorButton = builder.get_object("bg_color").unwrap();
 	let zoom_input: gtk::Entry = builder.get_object("zoom").unwrap();
 	let nb_iters_disp: gtk::Label = builder.get_object("nb_iters").unwrap();
 
@@ -85,6 +87,18 @@ fn build_ui(
 	let siw_save_button: gtk::Button = builder.get_object("siw_bt_save").unwrap();
 	let siw_filename: gtk::Entry = builder.get_object("siw_filename").unwrap();
 	let siw_filetype: gtk::ComboBox = builder.get_object("siw_filetype").unwrap();
+
+	if window.get_settings().map_or(false, |s| {
+		s.get_property_gtk_theme_name()
+			.map_or(false, |s| s.as_str().ends_with("-dark"))
+	}) {
+		let mut edge_color = edge_color.write().unwrap();
+		*edge_color = (255, 255, 255, 20);
+		let mut node_color = node_color.write().unwrap();
+		*node_color = (255, 127, 0);
+		let mut bg_color = bg_color.write().unwrap();
+		*bg_color = (0, 0, 0);
+	}
 
 	{
 		let settings = settings.read().unwrap();
@@ -115,6 +129,15 @@ fn build_ui(
 		}
 	});
 	node_radius_input.set_text(&node_radius.read().unwrap().to_string());
+	bg_color_input.set_rgba({
+		let bg_color = bg_color.read().unwrap();
+		&gdk::RGBA {
+			red: bg_color.0 as f64 / 255.,
+			green: bg_color.1 as f64 / 255.,
+			blue: bg_color.2 as f64 / 255.,
+			alpha: 1.,
+		}
+	});
 	zoom_input.set_text(&zoom.read().unwrap().to_string());
 
 	{
@@ -422,6 +445,19 @@ fn build_ui(
 		}
 	});
 
+	bg_color_input.connect_color_set({
+		let tx = tx.clone();
+		move |bg_color_input| {
+			let c = bg_color_input.get_rgba();
+			*bg_color.write().unwrap() = (
+				(c.red * 255.) as u8,
+				(c.green * 255.) as u8,
+				(c.blue * 255.) as u8,
+			);
+			tx.write().unwrap().redraw = true;
+		}
+	});
+
 	zoom_input.connect_changed({
 		let pixbuf = pixbuf.clone();
 		let tx = tx.clone();
@@ -517,6 +553,7 @@ pub fn run(
 	let draw_nodes = Arc::new(RwLock::new(true));
 	let node_color = Arc::new(RwLock::new((255, 0, 0)));
 	let node_radius = Arc::new(RwLock::new(2));
+	let bg_color = Arc::new(RwLock::new((255, 255, 255)));
 	let zoom = Arc::new(RwLock::new(1.0));
 
 	application.connect_activate({
@@ -528,6 +565,7 @@ pub fn run(
 		let draw_nodes = draw_nodes.clone();
 		let node_color = node_color.clone();
 		let node_radius = node_radius.clone();
+		let bg_color = bg_color.clone();
 		let msg_from_gtk = msg_from_gtk.clone();
 		move |app| {
 			build_ui(
@@ -543,6 +581,7 @@ pub fn run(
 				draw_nodes.clone(),
 				node_color.clone(),
 				node_radius.clone(),
+				bg_color.clone(),
 				zoom.clone(),
 				nb_iters.clone(),
 			)
@@ -563,6 +602,7 @@ pub fn run(
 					*draw_nodes.read().unwrap(),
 					*node_color.read().unwrap(),
 					*node_radius.read().unwrap(),
+					*bg_color.read().unwrap(),
 				);
 				tx.send(MsgToGtk::Update).unwrap();
 			}
@@ -593,6 +633,7 @@ pub fn run(
 						*draw_nodes.read().unwrap(),
 						*node_color.read().unwrap(),
 						*node_radius.read().unwrap(),
+						*bg_color.read().unwrap(),
 					);
 					tx.send(MsgToGtk::Update).unwrap();
 				}
