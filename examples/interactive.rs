@@ -29,12 +29,11 @@ pub fn run(image: Arc<RwLock<(u32, u32, Vec<u8>)>>, size: Arc<RwLock<(u32, u32)>
 			.window("ForceAtlas2", size.0, size.1)
 			.resizable()
 			.position_centered()
-			.opengl()
 			.build()
 			.unwrap()
 	};
 
-	let mut canvas = window.into_canvas().build().unwrap();
+	let mut canvas = window.into_canvas().accelerated().build().unwrap();
 	let texture_creator = canvas.texture_creator();
 
 	let mut event_pump = sdl_context.event_pump().unwrap();

@@ -276,9 +276,12 @@ fn build_ui(
 				|filetype| filetype.as_str(),
 			);
 			if let Some(pixbuf) = pixbuf.read().unwrap().as_ref() {
-				let path = save_img_window.get_current_folder().unwrap().join(filename);
-				if let Err(e) = pixbuf.0.savev(path, filetype, &[]) {
-					eprintln!("Error while saving: {:?}", e);
+				if let Some(current_folder) = save_img_window.get_current_folder() {
+					if let Err(e) = pixbuf.0.savev(current_folder.join(filename), filetype, &[]) {
+						eprintln!("Error while saving: {:?}", e);
+					}
+				} else {
+					eprintln!("Cannot save: no current folder");
 				}
 				save_img_window.hide()
 			}
