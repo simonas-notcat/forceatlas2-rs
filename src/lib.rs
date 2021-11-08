@@ -2,7 +2,6 @@
 #![feature(stdsimd)]
 #![feature(trait_alias)]
 #![allow(incomplete_features)]
-#![feature(option_result_unwrap_unchecked)]
 #![feature(core_intrinsics)]
 
 mod forces;

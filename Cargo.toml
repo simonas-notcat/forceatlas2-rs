@@ -6,7 +6,7 @@ authors = ["tuxmain <tuxmain@zettascript.org>"]
 repository = "https://framagit.org/ZettaScript/forceatlas2-rs"
 keywords = ["force", "graph", "algorithm"]
 license = "AGPL-3.0-only"
-edition = "2018"
+edition = "2021"
 
 [profile.release]
 codegen-units = 1
