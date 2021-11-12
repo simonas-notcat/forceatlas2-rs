@@ -2,12 +2,8 @@ mod drawer;
 mod gui;
 
 use forceatlas2::*;
-use std::{
-	io::BufRead,
-	sync::{Arc, RwLock},
-	thread,
-	time::Duration,
-};
+use parking_lot::RwLock;
+use std::{io::BufRead, sync::Arc, thread, time::Duration};
 
 const STANDBY_SLEEP: Duration = Duration::from_millis(50);
 const COMPUTE_SLEEP: Duration = Duration::from_millis(1);
@@ -82,9 +78,9 @@ fn main() {
 		let layout = layout.clone();
 		let nb_iters = nb_iters.clone();
 		move || loop {
-			thread::sleep(if *compute.read().unwrap() {
-				let mut nb_iters = nb_iters.write().unwrap();
-				layout.write().unwrap().iteration();
+			thread::sleep(if *compute.read() {
+				let mut nb_iters = nb_iters.write();
+				layout.write().iteration();
 				*nb_iters += 1;
 				COMPUTE_SLEEP
 			} else {

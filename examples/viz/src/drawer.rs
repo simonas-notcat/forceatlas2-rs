@@ -167,7 +167,7 @@ pub fn draw_disk(
 }
 
 pub fn draw_graph(
-	layout: std::sync::RwLockReadGuard<Layout<T>>,
+	layout: parking_lot::RwLockReadGuard<Layout<T>>,
 	size: (i32, i32),
 	pixels: &mut [u8],
 	rowstride: i32,

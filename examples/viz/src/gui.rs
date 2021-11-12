@@ -3,14 +3,10 @@ use crate::T;
 use forceatlas2::*;
 use gio::prelude::*;
 use gtk::{prelude::*, SettingsExt};
+use parking_lot::RwLock;
 use rand::Rng;
 use static_rc::StaticRc;
-use std::{
-	rc::Rc,
-	sync::{Arc, RwLock},
-	thread,
-	time::Duration,
-};
+use std::{rc::Rc, sync::Arc, thread, time::Duration};
 
 const STANDBY_SLEEP: Duration = Duration::from_millis(50);
 const DRAW_SLEEP: Duration = Duration::from_millis(30);
@@ -92,25 +88,25 @@ fn build_ui(
 		s.get_property_gtk_theme_name()
 			.map_or(false, |s| s.as_str().ends_with("-dark"))
 	}) {
-		let mut edge_color = edge_color.write().unwrap();
+		let mut edge_color = edge_color.write();
 		*edge_color = (255, 255, 255, 20);
-		let mut node_color = node_color.write().unwrap();
+		let mut node_color = node_color.write();
 		*node_color = (255, 127, 0);
-		let mut bg_color = bg_color.write().unwrap();
+		let mut bg_color = bg_color.write();
 		*bg_color = (0, 0, 0);
 	}
 
 	{
-		let settings = settings.read().unwrap();
+		let settings = settings.read();
 		chunk_size_input.set_text(&settings.chunk_size.unwrap_or(0).to_string());
 		ka_input.set_text(&settings.ka.to_string());
 		kg_input.set_text(&settings.kg.to_string());
 		kr_input.set_text(&settings.kr.to_string());
 		speed_input.set_text(&settings.speed.to_string());
 	}
-	draw_edges_input.set_active(*draw_edges.read().unwrap());
+	draw_edges_input.set_active(*draw_edges.read());
 	edge_color_input.set_rgba({
-		let edge_color = edge_color.read().unwrap();
+		let edge_color = edge_color.read();
 		&gdk::RGBA {
 			red: edge_color.0 as f64 / 255.,
 			green: edge_color.1 as f64 / 255.,
@@ -118,9 +114,9 @@ fn build_ui(
 			alpha: edge_color.3 as f64 / 255.,
 		}
 	});
-	draw_nodes_input.set_active(*draw_nodes.read().unwrap());
+	draw_nodes_input.set_active(*draw_nodes.read());
 	node_color_input.set_rgba({
-		let node_color = node_color.read().unwrap();
+		let node_color = node_color.read();
 		&gdk::RGBA {
 			red: node_color.0 as f64 / 255.,
 			green: node_color.1 as f64 / 255.,
@@ -128,9 +124,9 @@ fn build_ui(
 			alpha: 1.,
 		}
 	});
-	node_radius_input.set_text(&node_radius.read().unwrap().to_string());
+	node_radius_input.set_text(&node_radius.read().to_string());
 	bg_color_input.set_rgba({
-		let bg_color = bg_color.read().unwrap();
+		let bg_color = bg_color.read();
 		&gdk::RGBA {
 			red: bg_color.0 as f64 / 255.,
 			green: bg_color.1 as f64 / 255.,
@@ -138,10 +134,10 @@ fn build_ui(
 			alpha: 1.,
 		}
 	});
-	zoom_input.set_text(&zoom.read().unwrap().to_string());
+	zoom_input.set_text(&zoom.read().to_string());
 
 	{
-		let layout = layout.read().unwrap();
+		let layout = layout.read();
 		let nb_nodes_disp: gtk::Label = builder.get_object("nb_nodes").unwrap();
 		let nb_edges_disp: gtk::Label = builder.get_object("nb_edges").unwrap();
 		nb_nodes_disp.set_text(&layout.masses.len().to_string());
@@ -161,14 +157,14 @@ fn build_ui(
 		let graph_adj = graph_adj.clone();
 		move |_, _, _| {
 			graph_area.grab_focus();
-			*graph_drag.write().unwrap() = Some((graph_adj.0.get_value(), graph_adj.1.get_value()));
+			*graph_drag.write() = Some((graph_adj.0.get_value(), graph_adj.1.get_value()));
 		}
 	});
 	graph_gesture_drag.connect_drag_update({
 		let graph_drag = graph_drag.clone();
 		let graph_adj = graph_adj.clone();
 		move |_, x, y| {
-			if let Some((cx, cy)) = graph_drag.read().unwrap().as_ref() {
+			if let Some((cx, cy)) = graph_drag.read().as_ref() {
 				graph_adj.0.set_value(cx - x);
 				graph_adj.1.set_value(cy - y);
 			}
@@ -176,7 +172,7 @@ fn build_ui(
 	});
 	graph_gesture_drag.connect_drag_end({
 		move |_, x, y| {
-			if let Some((cx, cy)) = graph_drag.write().unwrap().take() {
+			if let Some((cx, cy)) = graph_drag.write().take() {
 				graph_adj.0.set_value(cx - x);
 				graph_adj.1.set_value(cy - y);
 			}
@@ -195,11 +191,11 @@ fn build_ui(
 			if let Some(key) = event.get_keyval().name() {
 				match key.as_str() {
 					"KP_Add" | "plus" => {
-						let zoom = *zoom.read().unwrap();
+						let zoom = *zoom.read();
 						zoom_input.set_text(&(zoom * 1.1).to_string());
 					}
 					"KP_Subtract" | "minus" => {
-						let zoom = *zoom.read().unwrap();
+						let zoom = *zoom.read();
 						zoom_input.set_text(&(zoom * (1. / 1.1)).to_string())
 					}
 					"KP_0" | "0" => zoom_input.set_text("1"),
@@ -217,12 +213,11 @@ fn build_ui(
 	compute_button.connect_toggled({
 		let tx = tx.clone();
 		move |bt| {
-			if let Ok(mut compute) = compute.write() {
-				if *compute {
-					tx.write().unwrap().redraw = true;
-				}
-				*compute = bt.get_active();
+			let mut compute = compute.write();
+			if *compute {
+				tx.write().redraw = true;
 			}
+			*compute = bt.get_active();
 		}
 	});
 
@@ -232,11 +227,11 @@ fn build_ui(
 		let nb_iters = nb_iters.clone();
 		move |_| {
 			let mut rng = rand::thread_rng();
-			let mut layout = layout.write().unwrap();
+			let mut layout = layout.write();
 			layout.old_speeds.points.fill(0.0);
 			layout.points.points.fill_with(|| rng.gen_range(-1.0..1.0));
-			tx.write().unwrap().redraw = true;
-			*nb_iters.write().unwrap() = 0;
+			tx.write().redraw = true;
+			*nb_iters.write() = 0;
 		}
 	});
 
@@ -275,7 +270,7 @@ fn build_ui(
 				},
 				|filetype| filetype.as_str(),
 			);
-			if let Some(pixbuf) = pixbuf.read().unwrap().as_ref() {
+			if let Some(pixbuf) = pixbuf.read().as_ref() {
 				if let Some(current_folder) = save_img_window.get_current_folder() {
 					if let Err(e) = pixbuf.0.savev(current_folder.join(filename), filetype, &[]) {
 						eprintln!("Error while saving: {:?}", e);
@@ -291,7 +286,7 @@ fn build_ui(
 	copy_img_button.connect_clicked({
 		let pixbuf = pixbuf.clone();
 		move |_| {
-			if let Some(pixbuf) = pixbuf.read().unwrap().as_ref() {
+			if let Some(pixbuf) = pixbuf.read().as_ref() {
 				gtk::Clipboard::get(&gdk::SELECTION_CLIPBOARD).set_image(&pixbuf.0);
 			}
 		}
@@ -303,16 +298,14 @@ fn build_ui(
 		move |entry| {
 			if let Ok(chunk_size) = entry.get_text().parse() {
 				entry.override_background_color(gtk::StateFlags::NORMAL, None);
-				if let Ok(mut settings) = settings.write() {
-					settings.chunk_size = if chunk_size == 0 {
-						None
-					} else {
-						Some(chunk_size)
-					};
-					if let Ok(mut layout) = layout.write() {
-						layout.set_settings(settings.clone());
-					}
-				}
+				let mut settings = settings.write();
+				settings.chunk_size = if chunk_size == 0 {
+					None
+				} else {
+					Some(chunk_size)
+				};
+				let mut layout = layout.write();
+				layout.set_settings(settings.clone());
 			} else {
 				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
 			}
@@ -325,12 +318,10 @@ fn build_ui(
 		move |entry| {
 			if let Ok(ka) = entry.get_text().parse() {
 				entry.override_background_color(gtk::StateFlags::NORMAL, None);
-				if let Ok(mut settings) = settings.write() {
-					settings.ka = ka;
-					if let Ok(mut layout) = layout.write() {
-						layout.set_settings(settings.clone());
-					}
-				}
+				let mut settings = settings.write();
+				settings.ka = ka;
+				let mut layout = layout.write();
+				layout.set_settings(settings.clone());
 			} else {
 				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
 			}
@@ -343,12 +334,10 @@ fn build_ui(
 		move |entry| {
 			if let Ok(kg) = entry.get_text().parse() {
 				entry.override_background_color(gtk::StateFlags::NORMAL, None);
-				if let Ok(mut settings) = settings.write() {
-					settings.kg = kg;
-					if let Ok(mut layout) = layout.write() {
-						layout.set_settings(settings.clone());
-					}
-				}
+				let mut settings = settings.write();
+				settings.kg = kg;
+				let mut layout = layout.write();
+				layout.set_settings(settings.clone());
 			} else {
 				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
 			}
@@ -361,12 +350,10 @@ fn build_ui(
 		move |entry| {
 			if let Ok(kr) = entry.get_text().parse() {
 				entry.override_background_color(gtk::StateFlags::NORMAL, None);
-				if let Ok(mut settings) = settings.write() {
-					settings.kr = kr;
-					if let Ok(mut layout) = layout.write() {
-						layout.set_settings(settings.clone());
-					}
-				}
+				let mut settings = settings.write();
+				settings.kr = kr;
+				let mut layout = layout.write();
+				layout.set_settings(settings.clone());
 			} else {
 				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
 			}
@@ -377,12 +364,10 @@ fn build_ui(
 		move |entry| {
 			if let Ok(speed) = entry.get_text().parse() {
 				entry.override_background_color(gtk::StateFlags::NORMAL, None);
-				if let Ok(mut settings) = settings.write() {
-					settings.speed = speed;
-					if let Ok(mut layout) = layout.write() {
-						layout.set_settings(settings.clone());
-					}
-				}
+				let mut settings = settings.write();
+				settings.speed = speed;
+				let mut layout = layout.write();
+				layout.set_settings(settings.clone());
 			} else {
 				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
 			}
@@ -392,8 +377,8 @@ fn build_ui(
 	draw_edges_input.connect_toggled({
 		let tx = tx.clone();
 		move |draw_edges_input| {
-			*draw_edges.write().unwrap() = draw_edges_input.get_active();
-			tx.write().unwrap().redraw = true;
+			*draw_edges.write() = draw_edges_input.get_active();
+			tx.write().redraw = true;
 		}
 	});
 
@@ -401,21 +386,21 @@ fn build_ui(
 		let tx = tx.clone();
 		move |edge_color_input| {
 			let c = edge_color_input.get_rgba();
-			*edge_color.write().unwrap() = (
+			*edge_color.write() = (
 				(c.red * 255.) as u8,
 				(c.green * 255.) as u8,
 				(c.blue * 255.) as u8,
 				(c.alpha * 255.) as u8,
 			);
-			tx.write().unwrap().redraw = true;
+			tx.write().redraw = true;
 		}
 	});
 
 	draw_nodes_input.connect_toggled({
 		let tx = tx.clone();
 		move |draw_nodes_input| {
-			*draw_nodes.write().unwrap() = draw_nodes_input.get_active();
-			tx.write().unwrap().redraw = true;
+			*draw_nodes.write() = draw_nodes_input.get_active();
+			tx.write().redraw = true;
 		}
 	});
 
@@ -423,12 +408,12 @@ fn build_ui(
 		let tx = tx.clone();
 		move |node_color_input| {
 			let c = node_color_input.get_rgba();
-			*node_color.write().unwrap() = (
+			*node_color.write() = (
 				(c.red * 255.) as u8,
 				(c.green * 255.) as u8,
 				(c.blue * 255.) as u8,
 			);
-			tx.write().unwrap().redraw = true;
+			tx.write().redraw = true;
 		}
 	});
 
@@ -437,9 +422,9 @@ fn build_ui(
 		move |entry| {
 			if let Ok(v) = entry.get_text().parse() {
 				entry.override_background_color(gtk::StateFlags::NORMAL, None);
-				let mut node_radius = node_radius.write().unwrap();
+				let mut node_radius = node_radius.write();
 				if *node_radius != v {
-					tx.write().unwrap().redraw = true;
+					tx.write().redraw = true;
 				}
 				*node_radius = v;
 			} else {
@@ -452,12 +437,12 @@ fn build_ui(
 		let tx = tx.clone();
 		move |bg_color_input| {
 			let c = bg_color_input.get_rgba();
-			*bg_color.write().unwrap() = (
+			*bg_color.write() = (
 				(c.red * 255.) as u8,
 				(c.green * 255.) as u8,
 				(c.blue * 255.) as u8,
 			);
-			tx.write().unwrap().redraw = true;
+			tx.write().redraw = true;
 		}
 	});
 
@@ -470,8 +455,8 @@ fn build_ui(
 			if let Ok(val) = entry.get_text().parse() {
 				if val > 0.0 {
 					entry.override_background_color(gtk::StateFlags::NORMAL, None);
-					let mut zoom = zoom.write().unwrap();
-					let mut pixbuf = pixbuf.write().unwrap();
+					let mut zoom = zoom.write();
+					let mut pixbuf = pixbuf.write();
 					*zoom = val;
 					*pixbuf = gdk_pixbuf::Pixbuf::new(
 						gdk_pixbuf::Colorspace::Rgb,
@@ -481,7 +466,7 @@ fn build_ui(
 						(graph_viewport.get_allocated_height() as T * *zoom) as i32,
 					)
 					.map(Pixbuf);
-					tx.write().unwrap().redraw = true;
+					tx.write().redraw = true;
 					return;
 				}
 			}
@@ -493,9 +478,9 @@ fn build_ui(
 		let pixbuf = pixbuf.clone();
 		let tx = tx.clone();
 		move || {
-			let mut pixbuf = pixbuf.write().unwrap();
-			tx.write().unwrap().redraw = true;
-			let zoom = zoom.read().unwrap();
+			let mut pixbuf = pixbuf.write();
+			tx.write().redraw = true;
+			let zoom = zoom.read();
 			*pixbuf = gdk_pixbuf::Pixbuf::new(
 				gdk_pixbuf::Colorspace::Rgb,
 				false,
@@ -509,19 +494,19 @@ fn build_ui(
 
 	window.connect_configure_event({
 		move |_, _| {
-			tx.write().unwrap().resize = true;
+			tx.write().resize = true;
 			true
 		}
 	});
 
-	if let Some(rx) = rx.write().unwrap().take() {
+	if let Some(rx) = rx.write().take() {
 		rx.attach(None, move |msg| {
 			match msg {
 				MsgToGtk::Update => {
-					if let Some(pixbuf) = pixbuf.read().unwrap().as_ref() {
+					if let Some(pixbuf) = pixbuf.read().as_ref() {
 						graph_area.set_from_pixbuf(Some(&pixbuf.0));
 					}
-					nb_iters_disp.set_text(&nb_iters.read().unwrap().to_string());
+					nb_iters_disp.set_text(&nb_iters.read().to_string());
 				}
 				MsgToGtk::Resize => resize_handler(),
 			}
@@ -592,24 +577,24 @@ pub fn run(
 	});
 
 	thread::spawn(move || loop {
-		thread::sleep(if *compute.read().unwrap() {
-			if let Some(pixbuf) = pixbuf.write().unwrap().as_ref() {
-				let layout = layout.read().unwrap();
+		thread::sleep(if *compute.read() {
+			if let Some(pixbuf) = pixbuf.write().as_ref() {
+				let layout = layout.read();
 				crate::drawer::draw_graph(
 					layout,
 					(pixbuf.0.get_width(), pixbuf.0.get_height()),
 					unsafe { pixbuf.0.get_pixels() },
 					pixbuf.0.get_rowstride(),
-					*draw_edges.read().unwrap(),
-					*edge_color.read().unwrap(),
-					*draw_nodes.read().unwrap(),
-					*node_color.read().unwrap(),
-					*node_radius.read().unwrap(),
-					*bg_color.read().unwrap(),
+					*draw_edges.read(),
+					*edge_color.read(),
+					*draw_nodes.read(),
+					*node_color.read(),
+					*node_radius.read(),
+					*bg_color.read(),
 				);
 				tx.send(MsgToGtk::Update).unwrap();
 			}
-			let mut msg_from_gtk = msg_from_gtk.write().unwrap();
+			let mut msg_from_gtk = msg_from_gtk.write();
 			if msg_from_gtk.resize {
 				msg_from_gtk.resize = false;
 				msg_from_gtk.redraw = false;
@@ -617,26 +602,26 @@ pub fn run(
 			}
 			DRAW_SLEEP
 		} else {
-			let mut msg_from_gtk = msg_from_gtk.write().unwrap();
+			let mut msg_from_gtk = msg_from_gtk.write();
 			if msg_from_gtk.resize {
 				msg_from_gtk.resize = false;
 				msg_from_gtk.redraw = false;
 				tx.send(MsgToGtk::Resize).unwrap();
 			} else if msg_from_gtk.redraw {
 				msg_from_gtk.redraw = false;
-				if let Some(pixbuf) = pixbuf.write().unwrap().as_ref() {
-					let layout = layout.read().unwrap();
+				if let Some(pixbuf) = pixbuf.write().as_ref() {
+					let layout = layout.read();
 					crate::drawer::draw_graph(
 						layout,
 						(pixbuf.0.get_width(), pixbuf.0.get_height()),
 						unsafe { pixbuf.0.get_pixels() },
 						pixbuf.0.get_rowstride(),
-						*draw_edges.read().unwrap(),
-						*edge_color.read().unwrap(),
-						*draw_nodes.read().unwrap(),
-						*node_color.read().unwrap(),
-						*node_radius.read().unwrap(),
-						*bg_color.read().unwrap(),
+						*draw_edges.read(),
+						*edge_color.read(),
+						*draw_nodes.read(),
+						*node_color.read(),
+						*node_radius.read(),
+						*bg_color.read(),
 					);
 					tx.send(MsgToGtk::Update).unwrap();
 				}
