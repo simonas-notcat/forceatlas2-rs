@@ -176,6 +176,8 @@ pub fn draw_graph(
 	node_radius: i32,
 	bg_color: (u8, u8, u8),
 ) {
+	assert_eq!(layout.points.dimensions, 2);
+
 	pixels
 		.iter_mut()
 		.zip(IntoIterator::into_iter([bg_color.0, bg_color.1, bg_color.2]).cycle())
@@ -261,30 +263,46 @@ pub fn draw_graph(
 	}
 }
 
-pub fn _draw_graph_3d(
-	layout: std::sync::RwLockReadGuard<Layout<T>>,
+pub fn draw_graph_3d(
+	layout: parking_lot::RwLockReadGuard<Layout<T>>,
 	size: (i32, i32),
 	pixels: &mut [u8],
 	rowstride: i32,
 	draw_edges: bool,
 	edge_color: (u8, u8, u8, u8),
+	bg_color: (u8, u8, u8),
 ) {
+	assert_eq!(layout.points.dimensions, 3);
+
+	pixels
+		.iter_mut()
+		.zip(IntoIterator::into_iter([bg_color.0, bg_color.1, bg_color.2]).cycle())
+		.for_each(|(px, bg)| *px = bg);
+
+	let mut l = 1.0;
+	for pos in layout.points.iter() {
+		let li = (pos[1] * 1.25).max(pos[0] * 1.25) + pos[2];
+		if li > l {
+			l = li;
+		}
+	}
+
+	println!("l: {}", l);
+
 	let camera = cam_geom::Camera::new(
 		cam_geom::IntrinsicParametersPerspective::from(cam_geom::PerspectiveParams {
-			fx: 100.0,
-			fy: 100.0,
+			fx: size.0 as f32,
+			fy: size.1 as f32,
 			skew: 0.0,
 			cx: size.0 as f32 / 2.0,
 			cy: size.1 as f32 / 2.0,
 		}),
 		cam_geom::ExtrinsicParameters::from_view(
-			&Vector3::new(10.0, 0.0, 0.0),
+			&Vector3::new(l, 0.0, 0.0),
 			&Vector3::new(0.0, 0.0, 0.0),
 			&Unit::new_normalize(Vector3::new(0.0, 0.0, 1.0)),
 		),
 	);
-
-	pixels.fill(255);
 
 	if draw_edges {
 		for (h1, h2) in layout.edges.iter() {

@@ -44,6 +44,7 @@ fn build_ui(
 	node_radius: Arc<RwLock<i32>>,
 	bg_color: Arc<RwLock<(u8, u8, u8)>>,
 	zoom: Arc<RwLock<T>>,
+	d3: Arc<RwLock<bool>>,
 	nb_iters: Arc<RwLock<usize>>,
 ) {
 	let builder = gtk::Builder::new();
@@ -73,6 +74,7 @@ fn build_ui(
 	let node_radius_input: gtk::Entry = builder.object("node_radius").unwrap();
 	let bg_color_input: gtk::ColorButton = builder.object("bg_color").unwrap();
 	let zoom_input: gtk::Entry = builder.object("zoom").unwrap();
+	let d3_input: gtk::CheckButton = builder.object("3d").unwrap();
 	let nb_iters_disp: gtk::Label = builder.object("nb_iters").unwrap();
 
 	let save_img_window: gtk::FileChooserDialog = builder.object("save_img_window").unwrap();
@@ -358,6 +360,8 @@ fn build_ui(
 	});
 
 	speed_input.connect_changed({
+		let layout = layout.clone();
+		let settings = settings.clone();
 		move |entry| {
 			if let Ok(speed) = entry.text().parse() {
 				entry.set_secondary_icon_name(None);
@@ -471,6 +475,27 @@ fn build_ui(
 		}
 	});
 
+	d3_input.connect_toggled({
+		let tx = tx.clone();
+		let nb_iters = nb_iters.clone();
+		move |d3_input| {
+			let mut d3 = d3.write();
+			let mut layout = layout.write();
+			let mut settings = settings.write();
+			*d3 = d3_input.is_active();
+			settings.dimensions = if *d3 { 3 } else { 2 };
+			*layout = Layout::from_graph(
+				layout.edges.clone(),
+				Nodes::Degree(layout.masses.len()),
+				layout.weights.clone(),
+				settings.clone(),
+			);
+			*nb_iters.write() = 0;
+			tx.write().redraw = true;
+			drop(layout);
+		}
+	});
+
 	let resize_handler = {
 		let pixbuf = pixbuf.clone();
 		let tx = tx.clone();
@@ -539,6 +564,7 @@ pub fn run(
 	let node_radius = Arc::new(RwLock::new(2));
 	let bg_color = Arc::new(RwLock::new((255, 255, 255)));
 	let zoom = Arc::new(RwLock::new(1.0));
+	let d3 = Arc::new(RwLock::new(false));
 
 	application.connect_activate({
 		let compute = compute.clone();
@@ -551,6 +577,7 @@ pub fn run(
 		let node_radius = node_radius.clone();
 		let bg_color = bg_color.clone();
 		let msg_from_gtk = msg_from_gtk.clone();
+		let d3 = d3.clone();
 		move |app| {
 			build_ui(
 				app,
@@ -567,6 +594,7 @@ pub fn run(
 				node_radius.clone(),
 				bg_color.clone(),
 				zoom.clone(),
+				d3.clone(),
 				nb_iters.clone(),
 			)
 		}
@@ -576,18 +604,30 @@ pub fn run(
 		thread::sleep(if *compute.read() {
 			if let Some(pixbuf) = pixbuf.write().as_ref() {
 				let layout = layout.read();
-				crate::drawer::draw_graph(
-					layout,
-					(pixbuf.0.width(), pixbuf.0.height()),
-					unsafe { pixbuf.0.pixels() },
-					pixbuf.0.rowstride(),
-					*draw_edges.read(),
-					*edge_color.read(),
-					*draw_nodes.read(),
-					*node_color.read(),
-					*node_radius.read(),
-					*bg_color.read(),
-				);
+				if *d3.read() {
+					crate::drawer::draw_graph_3d(
+						layout,
+						(pixbuf.0.width(), pixbuf.0.height()),
+						unsafe { pixbuf.0.pixels() },
+						pixbuf.0.rowstride(),
+						*draw_edges.read(),
+						*edge_color.read(),
+						*bg_color.read(),
+					);
+				} else {
+					crate::drawer::draw_graph(
+						layout,
+						(pixbuf.0.width(), pixbuf.0.height()),
+						unsafe { pixbuf.0.pixels() },
+						pixbuf.0.rowstride(),
+						*draw_edges.read(),
+						*edge_color.read(),
+						*draw_nodes.read(),
+						*node_color.read(),
+						*node_radius.read(),
+						*bg_color.read(),
+					);
+				}
 				tx.send(MsgToGtk::Update).unwrap();
 			}
 			let mut msg_from_gtk = msg_from_gtk.write();
@@ -607,18 +647,30 @@ pub fn run(
 				msg_from_gtk.redraw = false;
 				if let Some(pixbuf) = pixbuf.write().as_ref() {
 					let layout = layout.read();
-					crate::drawer::draw_graph(
-						layout,
-						(pixbuf.0.width(), pixbuf.0.height()),
-						unsafe { pixbuf.0.pixels() },
-						pixbuf.0.rowstride(),
-						*draw_edges.read(),
-						*edge_color.read(),
-						*draw_nodes.read(),
-						*node_color.read(),
-						*node_radius.read(),
-						*bg_color.read(),
-					);
+					if *d3.read() {
+						crate::drawer::draw_graph_3d(
+							layout,
+							(pixbuf.0.width(), pixbuf.0.height()),
+							unsafe { pixbuf.0.pixels() },
+							pixbuf.0.rowstride(),
+							*draw_edges.read(),
+							*edge_color.read(),
+							*bg_color.read(),
+						);
+					} else {
+						crate::drawer::draw_graph(
+							layout,
+							(pixbuf.0.width(), pixbuf.0.height()),
+							unsafe { pixbuf.0.pixels() },
+							pixbuf.0.rowstride(),
+							*draw_edges.read(),
+							*edge_color.read(),
+							*draw_nodes.read(),
+							*node_color.read(),
+							*node_radius.read(),
+							*bg_color.read(),
+						);
+					}
 					tx.send(MsgToGtk::Update).unwrap();
 				}
 			}
