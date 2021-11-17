@@ -49,8 +49,6 @@ pub fn blend_rgb(buffer: &mut [u8], offset: usize, color: (u8, u8, u8, u8)) {
 	let a = unsafe {_mm_set1_epi16(color.3 as i16)};
 	let ca = unsafe {_mm_set1_epi16(color.3 as i16)};
 
-
-
 	buffer[offset] = (((color.0 as u16 * color.3 as u16) + (buffer[offset] as u16 * ca)) >> 8) as u8;
 	buffer[offset + 1] = (((color.1 as u16 * color.3 as u16) + (buffer[offset+1] as u16 * ca)) >> 8) as u8;
 	buffer[offset + 2] = (((color.2 as u16 * color.3 as u16) + (buffer[offset+2] as u16 * ca)) >> 8) as u8;

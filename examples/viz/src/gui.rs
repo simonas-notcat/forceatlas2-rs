@@ -2,7 +2,10 @@ use crate::T;
 
 use forceatlas2::*;
 use gio::prelude::*;
-use gtk::{prelude::*, SettingsExt};
+use gtk::{
+	prelude::*,
+	traits::{EntryExt, SettingsExt},
+};
 use parking_lot::RwLock;
 use rand::Rng;
 use static_rc::StaticRc;
@@ -10,12 +13,6 @@ use std::{rc::Rc, sync::Arc, thread, time::Duration};
 
 const STANDBY_SLEEP: Duration = Duration::from_millis(50);
 const DRAW_SLEEP: Duration = Duration::from_millis(30);
-const INVALID_BG_COLOR: gdk::RGBA = gdk::RGBA {
-	red: 1.0,
-	green: 0.0,
-	blue: 0.0,
-	alpha: 0.1,
-};
 
 enum MsgToGtk {
 	Resize,
@@ -52,40 +49,40 @@ fn build_ui(
 	let builder = gtk::Builder::new();
 	builder.add_from_string(include_str!("gui.glade")).unwrap();
 
-	let window: gtk::ApplicationWindow = builder.get_object("window").unwrap();
+	let window: gtk::ApplicationWindow = builder.object("window").unwrap();
 	window.set_application(Some(app));
 
-	let graph_area: gtk::Image = builder.get_object("graph_area").unwrap();
-	let graph_box: gtk::ScrolledWindow = builder.get_object("graph_box").unwrap();
-	let graph_viewport: gtk::Viewport = builder.get_object("graph_viewport").unwrap();
-	let graph_hadj: gtk::Adjustment = graph_box.get_hadjustment().unwrap();
-	let graph_vadj: gtk::Adjustment = graph_box.get_vadjustment().unwrap();
-	let compute_button: gtk::ToggleButton = builder.get_object("bt_compute").unwrap();
-	let reset_button: gtk::Button = builder.get_object("bt_reset").unwrap();
-	let save_img_button: gtk::Button = builder.get_object("bt_save_img").unwrap();
-	let copy_img_button: gtk::Button = builder.get_object("bt_copy_img").unwrap();
-	let chunk_size_input: gtk::Entry = builder.get_object("chunk_size").unwrap();
-	let ka_input: gtk::Entry = builder.get_object("ka").unwrap();
-	let kg_input: gtk::Entry = builder.get_object("kg").unwrap();
-	let kr_input: gtk::Entry = builder.get_object("kr").unwrap();
-	let speed_input: gtk::Entry = builder.get_object("speed").unwrap();
-	let draw_edges_input: gtk::CheckButton = builder.get_object("draw_edges").unwrap();
-	let edge_color_input: gtk::ColorButton = builder.get_object("edge_color").unwrap();
-	let draw_nodes_input: gtk::CheckButton = builder.get_object("draw_nodes").unwrap();
-	let node_color_input: gtk::ColorButton = builder.get_object("node_color").unwrap();
-	let node_radius_input: gtk::Entry = builder.get_object("node_radius").unwrap();
-	let bg_color_input: gtk::ColorButton = builder.get_object("bg_color").unwrap();
-	let zoom_input: gtk::Entry = builder.get_object("zoom").unwrap();
-	let nb_iters_disp: gtk::Label = builder.get_object("nb_iters").unwrap();
+	let graph_area: gtk::Image = builder.object("graph_area").unwrap();
+	let graph_box: gtk::ScrolledWindow = builder.object("graph_box").unwrap();
+	let graph_viewport: gtk::Viewport = builder.object("graph_viewport").unwrap();
+	let graph_hadj: gtk::Adjustment = graph_box.hadjustment();
+	let graph_vadj: gtk::Adjustment = graph_box.vadjustment();
+	let compute_button: gtk::ToggleButton = builder.object("bt_compute").unwrap();
+	let reset_button: gtk::Button = builder.object("bt_reset").unwrap();
+	let save_img_button: gtk::Button = builder.object("bt_save_img").unwrap();
+	let copy_img_button: gtk::Button = builder.object("bt_copy_img").unwrap();
+	let chunk_size_input: gtk::Entry = builder.object("chunk_size").unwrap();
+	let ka_input: gtk::Entry = builder.object("ka").unwrap();
+	let kg_input: gtk::Entry = builder.object("kg").unwrap();
+	let kr_input: gtk::Entry = builder.object("kr").unwrap();
+	let speed_input: gtk::Entry = builder.object("speed").unwrap();
+	let draw_edges_input: gtk::CheckButton = builder.object("draw_edges").unwrap();
+	let edge_color_input: gtk::ColorButton = builder.object("edge_color").unwrap();
+	let draw_nodes_input: gtk::CheckButton = builder.object("draw_nodes").unwrap();
+	let node_color_input: gtk::ColorButton = builder.object("node_color").unwrap();
+	let node_radius_input: gtk::Entry = builder.object("node_radius").unwrap();
+	let bg_color_input: gtk::ColorButton = builder.object("bg_color").unwrap();
+	let zoom_input: gtk::Entry = builder.object("zoom").unwrap();
+	let nb_iters_disp: gtk::Label = builder.object("nb_iters").unwrap();
 
-	let save_img_window: gtk::FileChooserDialog = builder.get_object("save_img_window").unwrap();
-	let siw_cancel_button: gtk::Button = builder.get_object("siw_bt_cancel").unwrap();
-	let siw_save_button: gtk::Button = builder.get_object("siw_bt_save").unwrap();
-	let siw_filename: gtk::Entry = builder.get_object("siw_filename").unwrap();
-	let siw_filetype: gtk::ComboBox = builder.get_object("siw_filetype").unwrap();
+	let save_img_window: gtk::FileChooserDialog = builder.object("save_img_window").unwrap();
+	let siw_cancel_button: gtk::Button = builder.object("siw_bt_cancel").unwrap();
+	let siw_save_button: gtk::Button = builder.object("siw_bt_save").unwrap();
+	let siw_filename: gtk::Entry = builder.object("siw_filename").unwrap();
+	let siw_filetype: gtk::ComboBox = builder.object("siw_filetype").unwrap();
 
-	if window.get_settings().map_or(false, |s| {
-		s.get_property_gtk_theme_name()
+	if window.settings().map_or(false, |s| {
+		s.gtk_theme_name()
 			.map_or(false, |s| s.as_str().ends_with("-dark"))
 	}) {
 		let mut edge_color = edge_color.write();
@@ -138,8 +135,8 @@ fn build_ui(
 
 	{
 		let layout = layout.read();
-		let nb_nodes_disp: gtk::Label = builder.get_object("nb_nodes").unwrap();
-		let nb_edges_disp: gtk::Label = builder.get_object("nb_edges").unwrap();
+		let nb_nodes_disp: gtk::Label = builder.object("nb_nodes").unwrap();
+		let nb_edges_disp: gtk::Label = builder.object("nb_edges").unwrap();
 		nb_nodes_disp.set_text(&layout.masses.len().to_string());
 		nb_edges_disp.set_text(&layout.edges.len().to_string());
 	}
@@ -157,7 +154,7 @@ fn build_ui(
 		let graph_adj = graph_adj.clone();
 		move |_, _, _| {
 			graph_area.grab_focus();
-			*graph_drag.write() = Some((graph_adj.0.get_value(), graph_adj.1.get_value()));
+			*graph_drag.write() = Some((graph_adj.0.value(), graph_adj.1.value()));
 		}
 	});
 	graph_gesture_drag.connect_drag_update({
@@ -188,7 +185,7 @@ fn build_ui(
 				&graph_gesture_drag; // avoid GC
 			}
 
-			if let Some(key) = event.get_keyval().name() {
+			if let Some(key) = event.keyval().name() {
 				match key.as_str() {
 					"KP_Add" | "plus" => {
 						let zoom = *zoom.read();
@@ -217,7 +214,7 @@ fn build_ui(
 			if *compute {
 				tx.write().redraw = true;
 			}
-			*compute = bt.get_active();
+			*compute = bt.is_active();
 		}
 	});
 
@@ -253,9 +250,9 @@ fn build_ui(
 	siw_save_button.connect_clicked({
 		let pixbuf = pixbuf.clone();
 		move |_| {
-			let filename = siw_filename.get_text();
+			let filename = siw_filename.text();
 			let filename = filename.as_str();
-			let filetype = siw_filetype.get_active_id();
+			let filetype = siw_filetype.active_id();
 			let filetype = filetype.as_ref().map_or_else(
 				|| {
 					if filename.ends_with(".jpg") || filename.ends_with(".jpeg") {
@@ -271,7 +268,7 @@ fn build_ui(
 				|filetype| filetype.as_str(),
 			);
 			if let Some(pixbuf) = pixbuf.read().as_ref() {
-				if let Some(current_folder) = save_img_window.get_current_folder() {
+				if let Some(current_folder) = save_img_window.current_folder() {
 					if let Err(e) = pixbuf.0.savev(current_folder.join(filename), filetype, &[]) {
 						eprintln!("Error while saving: {:?}", e);
 					}
@@ -296,8 +293,8 @@ fn build_ui(
 		let layout = layout.clone();
 		let settings = settings.clone();
 		move |entry| {
-			if let Ok(chunk_size) = entry.get_text().parse() {
-				entry.override_background_color(gtk::StateFlags::NORMAL, None);
+			if let Ok(chunk_size) = entry.text().parse() {
+				entry.set_secondary_icon_name(None);
 				let mut settings = settings.write();
 				settings.chunk_size = if chunk_size == 0 {
 					None
@@ -307,7 +304,7 @@ fn build_ui(
 				let mut layout = layout.write();
 				layout.set_settings(settings.clone());
 			} else {
-				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
+				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
 		}
 	});
@@ -316,14 +313,14 @@ fn build_ui(
 		let layout = layout.clone();
 		let settings = settings.clone();
 		move |entry| {
-			if let Ok(ka) = entry.get_text().parse() {
-				entry.override_background_color(gtk::StateFlags::NORMAL, None);
+			if let Ok(ka) = entry.text().parse() {
+				entry.set_secondary_icon_name(None);
 				let mut settings = settings.write();
 				settings.ka = ka;
 				let mut layout = layout.write();
 				layout.set_settings(settings.clone());
 			} else {
-				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
+				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
 		}
 	});
@@ -332,14 +329,14 @@ fn build_ui(
 		let layout = layout.clone();
 		let settings = settings.clone();
 		move |entry| {
-			if let Ok(kg) = entry.get_text().parse() {
-				entry.override_background_color(gtk::StateFlags::NORMAL, None);
+			if let Ok(kg) = entry.text().parse() {
+				entry.set_secondary_icon_name(None);
 				let mut settings = settings.write();
 				settings.kg = kg;
 				let mut layout = layout.write();
 				layout.set_settings(settings.clone());
 			} else {
-				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
+				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
 		}
 	});
@@ -348,28 +345,28 @@ fn build_ui(
 		let layout = layout.clone();
 		let settings = settings.clone();
 		move |entry| {
-			if let Ok(kr) = entry.get_text().parse() {
-				entry.override_background_color(gtk::StateFlags::NORMAL, None);
+			if let Ok(kr) = entry.text().parse() {
+				entry.set_secondary_icon_name(None);
 				let mut settings = settings.write();
 				settings.kr = kr;
 				let mut layout = layout.write();
 				layout.set_settings(settings.clone());
 			} else {
-				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
+				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
 		}
 	});
 
 	speed_input.connect_changed({
 		move |entry| {
-			if let Ok(speed) = entry.get_text().parse() {
-				entry.override_background_color(gtk::StateFlags::NORMAL, None);
+			if let Ok(speed) = entry.text().parse() {
+				entry.set_secondary_icon_name(None);
 				let mut settings = settings.write();
 				settings.speed = speed;
 				let mut layout = layout.write();
 				layout.set_settings(settings.clone());
 			} else {
-				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
+				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
 		}
 	});
@@ -377,7 +374,7 @@ fn build_ui(
 	draw_edges_input.connect_toggled({
 		let tx = tx.clone();
 		move |draw_edges_input| {
-			*draw_edges.write() = draw_edges_input.get_active();
+			*draw_edges.write() = draw_edges_input.is_active();
 			tx.write().redraw = true;
 		}
 	});
@@ -385,7 +382,7 @@ fn build_ui(
 	edge_color_input.connect_color_set({
 		let tx = tx.clone();
 		move |edge_color_input| {
-			let c = edge_color_input.get_rgba();
+			let c = edge_color_input.rgba();
 			*edge_color.write() = (
 				(c.red * 255.) as u8,
 				(c.green * 255.) as u8,
@@ -399,7 +396,7 @@ fn build_ui(
 	draw_nodes_input.connect_toggled({
 		let tx = tx.clone();
 		move |draw_nodes_input| {
-			*draw_nodes.write() = draw_nodes_input.get_active();
+			*draw_nodes.write() = draw_nodes_input.is_active();
 			tx.write().redraw = true;
 		}
 	});
@@ -407,7 +404,7 @@ fn build_ui(
 	node_color_input.connect_color_set({
 		let tx = tx.clone();
 		move |node_color_input| {
-			let c = node_color_input.get_rgba();
+			let c = node_color_input.rgba();
 			*node_color.write() = (
 				(c.red * 255.) as u8,
 				(c.green * 255.) as u8,
@@ -420,15 +417,15 @@ fn build_ui(
 	node_radius_input.connect_changed({
 		let tx = tx.clone();
 		move |entry| {
-			if let Ok(v) = entry.get_text().parse() {
-				entry.override_background_color(gtk::StateFlags::NORMAL, None);
+			if let Ok(v) = entry.text().parse() {
+				entry.set_secondary_icon_name(None);
 				let mut node_radius = node_radius.write();
 				if *node_radius != v {
 					tx.write().redraw = true;
 				}
 				*node_radius = v;
 			} else {
-				entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
+				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
 		}
 	});
@@ -436,7 +433,7 @@ fn build_ui(
 	bg_color_input.connect_color_set({
 		let tx = tx.clone();
 		move |bg_color_input| {
-			let c = bg_color_input.get_rgba();
+			let c = bg_color_input.rgba();
 			*bg_color.write() = (
 				(c.red * 255.) as u8,
 				(c.green * 255.) as u8,
@@ -452,9 +449,9 @@ fn build_ui(
 		let zoom = zoom.clone();
 		let graph_viewport = graph_viewport.clone();
 		move |entry| {
-			if let Ok(val) = entry.get_text().parse() {
+			if let Ok(val) = entry.text().parse() {
 				if val > 0.0 {
-					entry.override_background_color(gtk::StateFlags::NORMAL, None);
+					entry.set_secondary_icon_name(None);
 					let mut zoom = zoom.write();
 					let mut pixbuf = pixbuf.write();
 					*zoom = val;
@@ -462,15 +459,15 @@ fn build_ui(
 						gdk_pixbuf::Colorspace::Rgb,
 						false,
 						8,
-						(graph_viewport.get_allocated_width() as T * *zoom) as i32,
-						(graph_viewport.get_allocated_height() as T * *zoom) as i32,
+						(graph_viewport.allocated_width() as T * *zoom) as i32,
+						(graph_viewport.allocated_height() as T * *zoom) as i32,
 					)
 					.map(Pixbuf);
 					tx.write().redraw = true;
 					return;
 				}
 			}
-			entry.override_background_color(gtk::StateFlags::NORMAL, Some(&INVALID_BG_COLOR));
+			entry.set_secondary_icon_name(Some("emblem-unreadable"));
 		}
 	});
 
@@ -485,8 +482,8 @@ fn build_ui(
 				gdk_pixbuf::Colorspace::Rgb,
 				false,
 				8,
-				(graph_viewport.get_allocated_width() as T * *zoom) as i32,
-				(graph_viewport.get_allocated_height() as T * *zoom) as i32,
+				(graph_viewport.allocated_width() as T * *zoom) as i32,
+				(graph_viewport.allocated_height() as T * *zoom) as i32,
 			)
 			.map(Pixbuf);
 		}
@@ -526,8 +523,7 @@ pub fn run(
 	let application = gtk::Application::new(
 		Some("org.framagit.ZettaScript.forceatlas2.examples.viz"),
 		Default::default(),
-	)
-	.unwrap();
+	);
 
 	let (tx, rx) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4);
 	let rx = Arc::new(RwLock::new(Some(rx)));
@@ -582,9 +578,9 @@ pub fn run(
 				let layout = layout.read();
 				crate::drawer::draw_graph(
 					layout,
-					(pixbuf.0.get_width(), pixbuf.0.get_height()),
-					unsafe { pixbuf.0.get_pixels() },
-					pixbuf.0.get_rowstride(),
+					(pixbuf.0.width(), pixbuf.0.height()),
+					unsafe { pixbuf.0.pixels() },
+					pixbuf.0.rowstride(),
 					*draw_edges.read(),
 					*edge_color.read(),
 					*draw_nodes.read(),
@@ -613,9 +609,9 @@ pub fn run(
 					let layout = layout.read();
 					crate::drawer::draw_graph(
 						layout,
-						(pixbuf.0.get_width(), pixbuf.0.get_height()),
-						unsafe { pixbuf.0.get_pixels() },
-						pixbuf.0.get_rowstride(),
+						(pixbuf.0.width(), pixbuf.0.height()),
+						unsafe { pixbuf.0.pixels() },
+						pixbuf.0.rowstride(),
 						*draw_edges.read(),
 						*edge_color.read(),
 						*draw_nodes.read(),
@@ -630,5 +626,5 @@ pub fn run(
 		});
 	});
 
-	application.run(&[]);
+	application.run_with_args::<&str>(&[]);
 }

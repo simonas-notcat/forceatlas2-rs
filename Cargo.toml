@@ -24,7 +24,7 @@ rayon = { version = "1.5.1", optional = true }
 alloc_counter = "0.0.4"
 plotters = "0.3.1"
 scanrs = "0.3.0"
-sdl2 = "0.34.5"
+sdl2 = "0.35.1"
 stl = {git = "https://github.com/etrombly/rust-stl"}
 
 [features]
