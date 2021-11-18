@@ -45,6 +45,7 @@ fn build_ui(
 	bg_color: Arc<RwLock<(u8, u8, u8)>>,
 	zoom: Arc<RwLock<T>>,
 	d3: Arc<RwLock<bool>>,
+	d3_angle: Arc<RwLock<(f32, f32)>>,
 	nb_iters: Arc<RwLock<usize>>,
 ) {
 	let builder = gtk::Builder::new();
@@ -170,6 +171,7 @@ fn build_ui(
 		}
 	});
 	graph_gesture_drag.connect_drag_end({
+		let graph_adj = graph_adj.clone();
 		move |_, x, y| {
 			if let Some((cx, cy)) = graph_drag.write().take() {
 				graph_adj.0.set_value(cx - x);
@@ -179,6 +181,7 @@ fn build_ui(
 	});
 
 	graph_area.connect_key_press_event({
+		let tx = tx.clone();
 		let zoom_input = zoom_input.clone();
 		let zoom = zoom.clone();
 		move |_, event| {
@@ -198,6 +201,42 @@ fn build_ui(
 						zoom_input.set_text(&(zoom * (1. / 1.1)).to_string())
 					}
 					"KP_0" | "0" => zoom_input.set_text("1"),
+					"KP_2" | "2" => {
+						d3_angle.write().0 -= 0.1;
+						tx.write().redraw = true;
+					}
+					"KP_4" | "4" => {
+						d3_angle.write().1 -= 0.1;
+						tx.write().redraw = true;
+					}
+					"KP_5" | "5" => {
+						*d3_angle.write() = (0.0, 0.0);
+						tx.write().redraw = true;
+					}
+					"KP_6" | "6" => {
+						d3_angle.write().1 += 0.1;
+						tx.write().redraw = true;
+					}
+					"KP_8" | "8" => {
+						d3_angle.write().0 += 0.1;
+						tx.write().redraw = true;
+					}
+					"Right" => {
+						graph_adj.0.set_value(graph_adj.0.value() + 16.0);
+						return Inhibit(true);
+					}
+					"Left" => {
+						graph_adj.0.set_value(graph_adj.0.value() - 16.0);
+						return Inhibit(true);
+					}
+					"Down" => {
+						graph_adj.1.set_value(graph_adj.1.value() + 16.0);
+						return Inhibit(true);
+					}
+					"Up" => {
+						graph_adj.1.set_value(graph_adj.1.value() - 16.0);
+						return Inhibit(true);
+					}
 					_ => {}
 				}
 			}
@@ -565,6 +604,7 @@ pub fn run(
 	let bg_color = Arc::new(RwLock::new((255, 255, 255)));
 	let zoom = Arc::new(RwLock::new(1.0));
 	let d3 = Arc::new(RwLock::new(false));
+	let d3_angle = Arc::new(RwLock::new((0.0, 0.0)));
 
 	application.connect_activate({
 		let compute = compute.clone();
@@ -578,6 +618,7 @@ pub fn run(
 		let bg_color = bg_color.clone();
 		let msg_from_gtk = msg_from_gtk.clone();
 		let d3 = d3.clone();
+		let d3_angle = d3_angle.clone();
 		move |app| {
 			build_ui(
 				app,
@@ -595,6 +636,7 @@ pub fn run(
 				bg_color.clone(),
 				zoom.clone(),
 				d3.clone(),
+				d3_angle.clone(),
 				nb_iters.clone(),
 			)
 		}
@@ -613,6 +655,7 @@ pub fn run(
 						*draw_edges.read(),
 						*edge_color.read(),
 						*bg_color.read(),
+						*d3_angle.read(),
 					);
 				} else {
 					crate::drawer::draw_graph(
@@ -656,6 +699,7 @@ pub fn run(
 							*draw_edges.read(),
 							*edge_color.read(),
 							*bg_color.read(),
+							*d3_angle.read(),
 						);
 					} else {
 						crate::drawer::draw_graph(

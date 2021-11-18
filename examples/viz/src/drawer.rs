@@ -271,6 +271,7 @@ pub fn draw_graph_3d(
 	draw_edges: bool,
 	edge_color: (u8, u8, u8, u8),
 	bg_color: (u8, u8, u8),
+	camera_angle: (f32, f32),
 ) {
 	assert_eq!(layout.points.dimensions, 3);
 
@@ -286,19 +287,23 @@ pub fn draw_graph_3d(
 			l = li;
 		}
 	}
+	l *= 2.0; // TODO better
 
-	println!("l: {}", l);
-
+	let focal = size.0.max(size.1) as f32;
 	let camera = cam_geom::Camera::new(
 		cam_geom::IntrinsicParametersPerspective::from(cam_geom::PerspectiveParams {
-			fx: size.0 as f32,
-			fy: size.1 as f32,
+			fx: focal,
+			fy: focal,
 			skew: 0.0,
 			cx: size.0 as f32 / 2.0,
 			cy: size.1 as f32 / 2.0,
 		}),
 		cam_geom::ExtrinsicParameters::from_view(
-			&Vector3::new(l, 0.0, 0.0),
+			&Vector3::new(
+				l * camera_angle.1.cos(),
+				l * camera_angle.0.cos() * camera_angle.1.sin(),
+				l * camera_angle.0.sin() * camera_angle.1.sin(),
+			),
 			&Vector3::new(0.0, 0.0, 0.0),
 			&Unit::new_normalize(Vector3::new(0.0, 0.0, 1.0)),
 		),
