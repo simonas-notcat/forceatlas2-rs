@@ -762,6 +762,42 @@ pub fn apply_repulsion_3d<T: Copy + Coord + std::fmt::Debug>(layout: &mut Layout
 	}
 }
 
+#[cfg(feature = "parallel")]
+pub fn apply_repulsion_3d_parallel<T: Copy + Coord + std::fmt::Debug + Send + Sync>(
+	layout: &mut Layout<T>,
+) {
+	let kr = layout.settings.kr;
+	for chunk_iter in layout.iter_par_nodes(layout.settings.chunk_size.unwrap()) {
+		chunk_iter.for_each(|n1_iter| {
+			for n1 in n1_iter {
+				let n1_mass = *n1.mass + T::one();
+				for n2 in n1.n2_iter {
+					let dx = unsafe { *n2.pos.get_unchecked(0) - *n1.pos.get_unchecked(0) };
+					let dy = unsafe { *n2.pos.get_unchecked(1) - *n1.pos.get_unchecked(1) };
+					let dz = unsafe { *n2.pos.get_unchecked(2) - *n1.pos.get_unchecked(2) };
+
+					let d2 = dx * dx + dy * dy + dz * dz;
+					if d2.is_zero() {
+						continue;
+					}
+
+					let f = n1_mass * (*n2.mass + T::one()) / d2 * kr;
+
+					let vx = f * dx;
+					let vy = f * dy;
+					let vz = f * dz;
+					unsafe { n1.speed.get_unchecked_mut(0) }.sub_assign(vx);
+					unsafe { n1.speed.get_unchecked_mut(1) }.sub_assign(vy);
+					unsafe { n1.speed.get_unchecked_mut(2) }.sub_assign(vz);
+					unsafe { n2.speed.get_unchecked_mut(0) }.add_assign(vx);
+					unsafe { n2.speed.get_unchecked_mut(1) }.add_assign(vy);
+					unsafe { n2.speed.get_unchecked_mut(2) }.add_assign(vz);
+				}
+			}
+		});
+	}
+}
+
 pub fn apply_repulsion_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 	let mut di = valloc(layout.settings.dimensions);
 	let (node_size, krprime) = unsafe {

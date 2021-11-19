@@ -189,7 +189,13 @@ impl Repulsion<f64> for Layout<f64> {
 					}
 					repulsion::apply_repulsion_2d
 				}
-				3 => repulsion::apply_repulsion_3d,
+				3 => {
+					#[cfg(feature = "parallel")]
+					if settings.chunk_size.is_some() {
+						return repulsion::apply_repulsion_3d_parallel;
+					}
+					repulsion::apply_repulsion_3d
+				}
 				_ => {
 					#[cfg(feature = "parallel")]
 					if settings.chunk_size.is_some() {
@@ -225,7 +231,13 @@ impl Repulsion<f32> for Layout<f32> {
 					}
 					repulsion::apply_repulsion_2d
 				}
-				3 => repulsion::apply_repulsion_3d,
+				3 => {
+					#[cfg(feature = "parallel")]
+					if settings.chunk_size.is_some() {
+						return repulsion::apply_repulsion_3d_parallel;
+					}
+					repulsion::apply_repulsion_3d
+				}
 				_ => {
 					#[cfg(feature = "parallel")]
 					if settings.chunk_size.is_some() {
