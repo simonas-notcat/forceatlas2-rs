@@ -3,9 +3,20 @@ use crate::T;
 use forceatlas2::*;
 use nalgebra::{Matrix2x3, Unit, Vector3};
 
-type Rgb = (u8, u8, u8);
+//type Rgb = (u8, u8, u8);
 
-pub struct RgbGradient {
+#[derive(Clone)]
+pub struct DrawSettings {
+	pub draw_edges: bool,
+	pub edge_color: (u8, u8, u8, u8),
+	pub draw_nodes: bool,
+	pub node_color: (u8, u8, u8),
+	pub node_radius: i32,
+	pub bg_color: (u8, u8, u8),
+	pub camera_angle: (f32, f32),
+}
+
+/*pub struct RgbGradient {
 	start_color: Rgb,
 	start_value: T,
 	end_color: Rgb,
@@ -15,7 +26,7 @@ pub struct RgbGradient {
 pub enum NodeColor {
 	Fixed(Rgb),
 	Mass(RgbGradient),
-}
+}*/
 
 // https://www.codeguru.com/cpp/cpp/algorithms/general/article.php/c15989/Tip-An-Optimized-Formula-for-Alpha-Blending-Pixels.htm
 pub fn blend(s: u8, d: u8, a: u8) -> u8 {
@@ -169,12 +180,15 @@ pub fn draw_graph(
 	size: (i32, i32),
 	pixels: &mut [u8],
 	rowstride: i32,
-	draw_edges: bool,
-	edge_color: (u8, u8, u8, u8),
-	draw_nodes: bool,
-	node_color: (u8, u8, u8),
-	node_radius: i32,
-	bg_color: (u8, u8, u8),
+	DrawSettings {
+		draw_edges,
+		edge_color,
+		draw_nodes,
+		node_color,
+		node_radius,
+		bg_color,
+		..
+	}: DrawSettings,
 ) {
 	assert_eq!(layout.points.dimensions, 2);
 
@@ -268,10 +282,13 @@ pub fn draw_graph_3d(
 	size: (i32, i32),
 	pixels: &mut [u8],
 	rowstride: i32,
-	draw_edges: bool,
-	edge_color: (u8, u8, u8, u8),
-	bg_color: (u8, u8, u8),
-	camera_angle: (f32, f32),
+	DrawSettings {
+		draw_edges,
+		edge_color,
+		bg_color,
+		camera_angle,
+		..
+	}: DrawSettings,
 ) {
 	assert_eq!(layout.points.dimensions, 3);
 

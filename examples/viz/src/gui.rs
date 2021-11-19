@@ -1,4 +1,4 @@
-use crate::T;
+use crate::{drawer::DrawSettings, T};
 
 use forceatlas2::*;
 use gio::prelude::*;
@@ -37,15 +37,9 @@ fn build_ui(
 	layout: Arc<RwLock<Layout<T>>>,
 	settings: Arc<RwLock<Settings<T>>>,
 	pixbuf: Arc<RwLock<Option<Pixbuf>>>,
-	draw_edges: Arc<RwLock<bool>>,
-	edge_color: Arc<RwLock<(u8, u8, u8, u8)>>,
-	draw_nodes: Arc<RwLock<bool>>,
-	node_color: Arc<RwLock<(u8, u8, u8)>>,
-	node_radius: Arc<RwLock<i32>>,
-	bg_color: Arc<RwLock<(u8, u8, u8)>>,
+	draw_settings: Arc<RwLock<DrawSettings>>,
 	zoom: Arc<RwLock<T>>,
 	d3: Arc<RwLock<bool>>,
-	d3_angle: Arc<RwLock<(f32, f32)>>,
 	nb_iters: Arc<RwLock<usize>>,
 ) {
 	let builder = gtk::Builder::new();
@@ -84,56 +78,54 @@ fn build_ui(
 	let siw_filename: gtk::Entry = builder.object("siw_filename").unwrap();
 	let siw_filetype: gtk::ComboBox = builder.object("siw_filetype").unwrap();
 
-	if window.settings().map_or(false, |s| {
-		s.gtk_theme_name()
-			.map_or(false, |s| s.as_str().ends_with("-dark"))
-	}) {
-		let mut edge_color = edge_color.write();
-		*edge_color = (255, 255, 255, 20);
-		let mut node_color = node_color.write();
-		*node_color = (255, 127, 0);
-		let mut bg_color = bg_color.write();
-		*bg_color = (0, 0, 0);
-	}
-
 	{
-		let settings = settings.read();
-		chunk_size_input.set_text(&settings.chunk_size.unwrap_or(0).to_string());
-		ka_input.set_text(&settings.ka.to_string());
-		kg_input.set_text(&settings.kg.to_string());
-		kr_input.set_text(&settings.kr.to_string());
-		speed_input.set_text(&settings.speed.to_string());
+		let mut draw_settings = draw_settings.write();
+
+		if window.settings().map_or(false, |s| {
+			s.gtk_theme_name()
+				.map_or(false, |s| s.as_str().ends_with("-dark"))
+		}) {
+			draw_settings.edge_color = (255, 255, 255, 20);
+			draw_settings.node_color = (255, 127, 0);
+			draw_settings.bg_color = (0, 0, 0);
+		}
+
+		{
+			let settings = settings.read();
+			chunk_size_input.set_text(&settings.chunk_size.unwrap_or(0).to_string());
+			ka_input.set_text(&settings.ka.to_string());
+			kg_input.set_text(&settings.kg.to_string());
+			kr_input.set_text(&settings.kr.to_string());
+			speed_input.set_text(&settings.speed.to_string());
+		}
+		draw_edges_input.set_active(draw_settings.draw_edges);
+		edge_color_input.set_rgba({
+			&gdk::RGBA {
+				red: draw_settings.edge_color.0 as f64 / 255.,
+				green: draw_settings.edge_color.1 as f64 / 255.,
+				blue: draw_settings.edge_color.2 as f64 / 255.,
+				alpha: draw_settings.edge_color.3 as f64 / 255.,
+			}
+		});
+		draw_nodes_input.set_active(draw_settings.draw_nodes);
+		node_color_input.set_rgba({
+			&gdk::RGBA {
+				red: draw_settings.node_color.0 as f64 / 255.,
+				green: draw_settings.node_color.1 as f64 / 255.,
+				blue: draw_settings.node_color.2 as f64 / 255.,
+				alpha: 1.,
+			}
+		});
+		node_radius_input.set_text(&draw_settings.node_radius.to_string());
+		bg_color_input.set_rgba({
+			&gdk::RGBA {
+				red: draw_settings.bg_color.0 as f64 / 255.,
+				green: draw_settings.bg_color.1 as f64 / 255.,
+				blue: draw_settings.bg_color.2 as f64 / 255.,
+				alpha: 1.,
+			}
+		});
 	}
-	draw_edges_input.set_active(*draw_edges.read());
-	edge_color_input.set_rgba({
-		let edge_color = edge_color.read();
-		&gdk::RGBA {
-			red: edge_color.0 as f64 / 255.,
-			green: edge_color.1 as f64 / 255.,
-			blue: edge_color.2 as f64 / 255.,
-			alpha: edge_color.3 as f64 / 255.,
-		}
-	});
-	draw_nodes_input.set_active(*draw_nodes.read());
-	node_color_input.set_rgba({
-		let node_color = node_color.read();
-		&gdk::RGBA {
-			red: node_color.0 as f64 / 255.,
-			green: node_color.1 as f64 / 255.,
-			blue: node_color.2 as f64 / 255.,
-			alpha: 1.,
-		}
-	});
-	node_radius_input.set_text(&node_radius.read().to_string());
-	bg_color_input.set_rgba({
-		let bg_color = bg_color.read();
-		&gdk::RGBA {
-			red: bg_color.0 as f64 / 255.,
-			green: bg_color.1 as f64 / 255.,
-			blue: bg_color.2 as f64 / 255.,
-			alpha: 1.,
-		}
-	});
 	zoom_input.set_text(&zoom.read().to_string());
 
 	{
@@ -182,6 +174,7 @@ fn build_ui(
 
 	graph_area.connect_key_press_event({
 		let tx = tx.clone();
+		let draw_settings = draw_settings.clone();
 		let zoom_input = zoom_input.clone();
 		let zoom = zoom.clone();
 		move |_, event| {
@@ -202,23 +195,23 @@ fn build_ui(
 					}
 					"KP_0" | "0" => zoom_input.set_text("1"),
 					"KP_2" | "2" => {
-						d3_angle.write().0 -= 0.1;
+						draw_settings.write().camera_angle.0 -= 0.1;
 						tx.write().redraw = true;
 					}
 					"KP_4" | "4" => {
-						d3_angle.write().1 -= 0.1;
+						draw_settings.write().camera_angle.1 -= 0.1;
 						tx.write().redraw = true;
 					}
 					"KP_5" | "5" => {
-						*d3_angle.write() = (0.0, 0.0);
+						draw_settings.write().camera_angle = (0.0, 0.0);
 						tx.write().redraw = true;
 					}
 					"KP_6" | "6" => {
-						d3_angle.write().1 += 0.1;
+						draw_settings.write().camera_angle.1 += 0.1;
 						tx.write().redraw = true;
 					}
 					"KP_8" | "8" => {
-						d3_angle.write().0 += 0.1;
+						draw_settings.write().camera_angle.0 += 0.1;
 						tx.write().redraw = true;
 					}
 					"Right" => {
@@ -416,17 +409,19 @@ fn build_ui(
 
 	draw_edges_input.connect_toggled({
 		let tx = tx.clone();
+		let draw_settings = draw_settings.clone();
 		move |draw_edges_input| {
-			*draw_edges.write() = draw_edges_input.is_active();
+			draw_settings.write().draw_edges = draw_edges_input.is_active();
 			tx.write().redraw = true;
 		}
 	});
 
 	edge_color_input.connect_color_set({
 		let tx = tx.clone();
+		let draw_settings = draw_settings.clone();
 		move |edge_color_input| {
 			let c = edge_color_input.rgba();
-			*edge_color.write() = (
+			draw_settings.write().edge_color = (
 				(c.red * 255.) as u8,
 				(c.green * 255.) as u8,
 				(c.blue * 255.) as u8,
@@ -438,17 +433,19 @@ fn build_ui(
 
 	draw_nodes_input.connect_toggled({
 		let tx = tx.clone();
+		let draw_settings = draw_settings.clone();
 		move |draw_nodes_input| {
-			*draw_nodes.write() = draw_nodes_input.is_active();
+			draw_settings.write().draw_nodes = draw_nodes_input.is_active();
 			tx.write().redraw = true;
 		}
 	});
 
 	node_color_input.connect_color_set({
 		let tx = tx.clone();
+		let draw_settings = draw_settings.clone();
 		move |node_color_input| {
 			let c = node_color_input.rgba();
-			*node_color.write() = (
+			draw_settings.write().node_color = (
 				(c.red * 255.) as u8,
 				(c.green * 255.) as u8,
 				(c.blue * 255.) as u8,
@@ -459,14 +456,15 @@ fn build_ui(
 
 	node_radius_input.connect_changed({
 		let tx = tx.clone();
+		let draw_settings = draw_settings.clone();
 		move |entry| {
 			if let Ok(v) = entry.text().parse() {
 				entry.set_secondary_icon_name(None);
-				let mut node_radius = node_radius.write();
-				if *node_radius != v {
+				let mut draw_settings = draw_settings.write();
+				if draw_settings.node_radius != v {
 					tx.write().redraw = true;
 				}
-				*node_radius = v;
+				draw_settings.node_radius = v;
 			} else {
 				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
@@ -477,7 +475,7 @@ fn build_ui(
 		let tx = tx.clone();
 		move |bg_color_input| {
 			let c = bg_color_input.rgba();
-			*bg_color.write() = (
+			draw_settings.write().bg_color = (
 				(c.red * 255.) as u8,
 				(c.green * 255.) as u8,
 				(c.blue * 255.) as u8,
@@ -596,29 +594,25 @@ pub fn run(
 		resize: false,
 	}));
 	let pixbuf = Arc::new(RwLock::new(None));
-	let draw_edges = Arc::new(RwLock::new(true));
-	let edge_color = Arc::new(RwLock::new((0, 0, 0, 20)));
-	let draw_nodes = Arc::new(RwLock::new(true));
-	let node_color = Arc::new(RwLock::new((255, 0, 0)));
-	let node_radius = Arc::new(RwLock::new(2));
-	let bg_color = Arc::new(RwLock::new((255, 255, 255)));
+	let draw_settings = Arc::new(RwLock::new(DrawSettings {
+		draw_edges: true,
+		edge_color: (0, 0, 0, 20),
+		draw_nodes: true,
+		node_color: (255, 0, 0),
+		node_radius: 2,
+		bg_color: (255, 255, 255),
+		camera_angle: (0.0, 0.0),
+	}));
 	let zoom = Arc::new(RwLock::new(1.0));
 	let d3 = Arc::new(RwLock::new(false));
-	let d3_angle = Arc::new(RwLock::new((0.0, 0.0)));
 
 	application.connect_activate({
 		let compute = compute.clone();
 		let layout = layout.clone();
 		let pixbuf = pixbuf.clone();
-		let draw_edges = draw_edges.clone();
-		let edge_color = edge_color.clone();
-		let draw_nodes = draw_nodes.clone();
-		let node_color = node_color.clone();
-		let node_radius = node_radius.clone();
-		let bg_color = bg_color.clone();
+		let draw_settings = draw_settings.clone();
 		let msg_from_gtk = msg_from_gtk.clone();
 		let d3 = d3.clone();
-		let d3_angle = d3_angle.clone();
 		move |app| {
 			build_ui(
 				app,
@@ -628,15 +622,9 @@ pub fn run(
 				layout.clone(),
 				settings.clone(),
 				pixbuf.clone(),
-				draw_edges.clone(),
-				edge_color.clone(),
-				draw_nodes.clone(),
-				node_color.clone(),
-				node_radius.clone(),
-				bg_color.clone(),
+				draw_settings.clone(),
 				zoom.clone(),
 				d3.clone(),
-				d3_angle.clone(),
 				nb_iters.clone(),
 			)
 		}
@@ -652,10 +640,7 @@ pub fn run(
 						(pixbuf.0.width(), pixbuf.0.height()),
 						unsafe { pixbuf.0.pixels() },
 						pixbuf.0.rowstride(),
-						*draw_edges.read(),
-						*edge_color.read(),
-						*bg_color.read(),
-						*d3_angle.read(),
+						draw_settings.read().clone(),
 					);
 				} else {
 					crate::drawer::draw_graph(
@@ -663,12 +648,7 @@ pub fn run(
 						(pixbuf.0.width(), pixbuf.0.height()),
 						unsafe { pixbuf.0.pixels() },
 						pixbuf.0.rowstride(),
-						*draw_edges.read(),
-						*edge_color.read(),
-						*draw_nodes.read(),
-						*node_color.read(),
-						*node_radius.read(),
-						*bg_color.read(),
+						draw_settings.read().clone(),
 					);
 				}
 				tx.send(MsgToGtk::Update).unwrap();
@@ -696,10 +676,7 @@ pub fn run(
 							(pixbuf.0.width(), pixbuf.0.height()),
 							unsafe { pixbuf.0.pixels() },
 							pixbuf.0.rowstride(),
-							*draw_edges.read(),
-							*edge_color.read(),
-							*bg_color.read(),
-							*d3_angle.read(),
+							draw_settings.read().clone(),
 						);
 					} else {
 						crate::drawer::draw_graph(
@@ -707,12 +684,7 @@ pub fn run(
 							(pixbuf.0.width(), pixbuf.0.height()),
 							unsafe { pixbuf.0.pixels() },
 							pixbuf.0.rowstride(),
-							*draw_edges.read(),
-							*edge_color.read(),
-							*draw_nodes.read(),
-							*node_color.read(),
-							*node_radius.read(),
-							*bg_color.read(),
+							draw_settings.read().clone(),
 						);
 					}
 					tx.send(MsgToGtk::Update).unwrap();
