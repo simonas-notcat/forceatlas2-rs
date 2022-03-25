@@ -142,7 +142,6 @@ where
 		}
 	}
 
-	#[inline]
 	pub fn get_settings(&self) -> &Settings<T> {
 		&self.settings
 	}
@@ -180,17 +179,14 @@ where
 		}
 	}
 
-	#[inline]
 	fn apply_attraction(&mut self) {
 		(self.fn_attraction)(self)
 	}
 
-	#[inline]
 	fn apply_gravity(&mut self) {
 		(self.fn_gravity)(self)
 	}
 
-	#[inline]
 	fn apply_repulsion(&mut self) {
 		(self.fn_repulsion)(self)
 	}

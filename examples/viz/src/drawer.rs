@@ -317,9 +317,9 @@ pub fn draw_graph_3d(
 		}),
 		cam_geom::ExtrinsicParameters::from_view(
 			&Vector3::new(
-				l * camera_angle.1.cos(),
-				l * camera_angle.0.cos() * camera_angle.1.sin(),
-				l * camera_angle.0.sin() * camera_angle.1.sin(),
+				l as f32 * camera_angle.1.cos(),
+				l as f32 * camera_angle.0.cos() * camera_angle.1.sin(),
+				l as f32 * camera_angle.0.sin() * camera_angle.1.sin(),
 			),
 			&Vector3::new(0.0, 0.0, 0.0),
 			&Unit::new_normalize(Vector3::new(0.0, 0.0, 1.0)),
@@ -332,12 +332,12 @@ pub fn draw_graph_3d(
 			let p2 = layout.points.get(*h2);
 			let proj = camera.world_to_pixel(&cam_geom::Points::new(unsafe {
 				Matrix2x3::new(
-					*p1.get_unchecked(0),
-					*p1.get_unchecked(1),
-					*p1.get_unchecked(2),
-					*p2.get_unchecked(0),
-					*p2.get_unchecked(1),
-					*p2.get_unchecked(2),
+					*p1.get_unchecked(0) as f32,
+					*p1.get_unchecked(1) as f32,
+					*p1.get_unchecked(2) as f32,
+					*p2.get_unchecked(0) as f32,
+					*p2.get_unchecked(1) as f32,
+					*p2.get_unchecked(2) as f32,
 				)
 			}));
 			draw_line(

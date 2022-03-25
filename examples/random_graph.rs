@@ -8,7 +8,7 @@ type T = f32;
 
 const SIZE: (u32, u32) = (1024, 1024);
 
-const ITERATIONS: u32 = 1000;
+const ITERATIONS: u32 = 100;
 const ANIM_MODE: bool = false;
 
 fn main() {
@@ -29,7 +29,9 @@ fn main() {
 		Nodes::Degree(NODES),
 		None,
 		Settings {
-			chunk_size: Some(256),
+			#[cfg(feature = "barnes_hut")]
+			barnes_hut: None,
+			chunk_size: None, //Some(256),
 			dimensions: 2,
 			dissuade_hubs: false,
 			ka: 0.5,
@@ -50,7 +52,7 @@ fn main() {
 		println!("{}/{}", i, ITERATIONS);
 		layout.iteration();
 	}
-	draw_graph(&layout, ITERATIONS);
+	//draw_graph(&layout, ITERATIONS);
 }
 
 fn draw_graph(layout: &Layout<T>, iteration: u32) {

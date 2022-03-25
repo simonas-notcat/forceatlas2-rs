@@ -879,13 +879,7 @@ pub fn apply_repulsion_bh_2d(layout: &mut Layout<f64>) {
 	.for_each(|(particle, speed, mass)| {
 		let nbody_barnes_hut::vector_2d::Vector2D { x, y } =
 			tree.calc_forces_on_particle(particle.position, mass + 1., |d2, m1, dv, m2| {
-				unsafe {
-					std::intrinsics::fmul_fast(
-						std::intrinsics::fmul_fast(m2, std::intrinsics::fdiv_fast(m1, d2.sqrt())),
-						kr,
-					) * dv
-				}
-				//m2 as f64 * m1 / d2.sqrt() * kr * dv
+				m2 as f64 * m1 / d2.sqrt() * kr * dv
 			});
 		speed[0] -= x;
 		speed[1] -= y;

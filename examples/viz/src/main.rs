@@ -7,7 +7,7 @@ use std::{io::BufRead, sync::Arc, thread, time::Duration};
 
 const STANDBY_SLEEP: Duration = Duration::from_millis(50);
 const COMPUTE_SLEEP: Duration = Duration::from_millis(1);
-type T = f32;
+type T = f64;
 
 fn main() {
 	let file = std::fs::File::open(std::env::args().nth(1).expect("Usage: viz <csv_file>"))
@@ -50,6 +50,7 @@ fn main() {
 	println!("Nodes: {}", nodes);
 
 	let settings = Settings {
+		barnes_hut: None,
 		chunk_size: Some(256),
 		dimensions: 2,
 		dissuade_hubs: false,

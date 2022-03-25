@@ -49,6 +49,8 @@ fn main() {
 		Nodes::Degree(nodes),
 		None,
 		Settings {
+			#[cfg(feature = "barnes_hut")]
+			barnes_hut: None,
 			chunk_size: None,
 			dimensions: 2,
 			dissuade_hubs: false,

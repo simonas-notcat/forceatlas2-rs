@@ -62,6 +62,8 @@ fn build_ui(
 	let kg_input: gtk::Entry = builder.object("kg").unwrap();
 	let kr_input: gtk::Entry = builder.object("kr").unwrap();
 	let speed_input: gtk::Entry = builder.object("speed").unwrap();
+	let barneshut_input: gtk::CheckButton = builder.object("barneshut").unwrap();
+	let barneshut_theta_input: gtk::Entry = builder.object("barneshut_theta").unwrap();
 	let draw_edges_input: gtk::CheckButton = builder.object("draw_edges").unwrap();
 	let edge_color_input: gtk::ColorButton = builder.object("edge_color").unwrap();
 	let draw_nodes_input: gtk::CheckButton = builder.object("draw_nodes").unwrap();
@@ -97,33 +99,35 @@ fn build_ui(
 			kg_input.set_text(&settings.kg.to_string());
 			kr_input.set_text(&settings.kr.to_string());
 			speed_input.set_text(&settings.speed.to_string());
+			barneshut_input.set_active(settings.barnes_hut.is_some());
+			barneshut_theta_input.set_text(&settings.barnes_hut.unwrap_or(1.0).to_string());
 		}
 		draw_edges_input.set_active(draw_settings.draw_edges);
 		edge_color_input.set_rgba({
-			&gdk::RGBA {
-				red: draw_settings.edge_color.0 as f64 / 255.,
-				green: draw_settings.edge_color.1 as f64 / 255.,
-				blue: draw_settings.edge_color.2 as f64 / 255.,
-				alpha: draw_settings.edge_color.3 as f64 / 255.,
-			}
+			&gdk::RGBA::new(
+				draw_settings.edge_color.0 as f64 / 255.,
+				draw_settings.edge_color.1 as f64 / 255.,
+				draw_settings.edge_color.2 as f64 / 255.,
+				draw_settings.edge_color.3 as f64 / 255.,
+			)
 		});
 		draw_nodes_input.set_active(draw_settings.draw_nodes);
 		node_color_input.set_rgba({
-			&gdk::RGBA {
-				red: draw_settings.node_color.0 as f64 / 255.,
-				green: draw_settings.node_color.1 as f64 / 255.,
-				blue: draw_settings.node_color.2 as f64 / 255.,
-				alpha: 1.,
-			}
+			&gdk::RGBA::new(
+				draw_settings.node_color.0 as f64 / 255.,
+				draw_settings.node_color.1 as f64 / 255.,
+				draw_settings.node_color.2 as f64 / 255.,
+				1.,
+			)
 		});
 		node_radius_input.set_text(&draw_settings.node_radius.to_string());
 		bg_color_input.set_rgba({
-			&gdk::RGBA {
-				red: draw_settings.bg_color.0 as f64 / 255.,
-				green: draw_settings.bg_color.1 as f64 / 255.,
-				blue: draw_settings.bg_color.2 as f64 / 255.,
-				alpha: 1.,
-			}
+			&gdk::RGBA::new(
+				draw_settings.bg_color.0 as f64 / 255.,
+				draw_settings.bg_color.1 as f64 / 255.,
+				draw_settings.bg_color.2 as f64 / 255.,
+				1.,
+			)
 		});
 	}
 	zoom_input.set_text(&zoom.read().to_string());
@@ -407,6 +411,48 @@ fn build_ui(
 		}
 	});
 
+	barneshut_input.connect_toggled({
+		let layout = layout.clone();
+		let settings = settings.clone();
+		let barneshut_theta_input = barneshut_theta_input.clone();
+		move |entry| {
+			if entry.is_active() {
+				if let Ok(theta) = barneshut_theta_input.text().parse() {
+					barneshut_theta_input.set_secondary_icon_name(None);
+					let mut settings = settings.write();
+					settings.barnes_hut = Some(theta);
+					let mut layout = layout.write();
+					layout.set_settings(settings.clone());
+				} else {
+					barneshut_theta_input.set_secondary_icon_name(Some("emblem-unreadable"));
+				}
+			} else {
+				let mut settings = settings.write();
+				settings.barnes_hut = None;
+				let mut layout = layout.write();
+				layout.set_settings(settings.clone());
+			}
+		}
+	});
+
+	barneshut_theta_input.connect_changed({
+		let layout = layout.clone();
+		let settings = settings.clone();
+		move |entry| {
+			if let Ok(theta) = entry.text().parse() {
+				entry.set_secondary_icon_name(None);
+				if barneshut_input.is_active() {
+					let mut settings = settings.write();
+					settings.barnes_hut = Some(theta);
+					let mut layout = layout.write();
+					layout.set_settings(settings.clone());
+				}
+			} else {
+				entry.set_secondary_icon_name(Some("emblem-unreadable"));
+			}
+		}
+	});
+
 	draw_edges_input.connect_toggled({
 		let tx = tx.clone();
 		let draw_settings = draw_settings.clone();
@@ -422,10 +468,10 @@ fn build_ui(
 		move |edge_color_input| {
 			let c = edge_color_input.rgba();
 			draw_settings.write().edge_color = (
-				(c.red * 255.) as u8,
-				(c.green * 255.) as u8,
-				(c.blue * 255.) as u8,
-				(c.alpha * 255.) as u8,
+				(c.red() * 255.) as u8,
+				(c.green() * 255.) as u8,
+				(c.blue() * 255.) as u8,
+				(c.alpha() * 255.) as u8,
 			);
 			tx.write().redraw = true;
 		}
@@ -446,9 +492,9 @@ fn build_ui(
 		move |node_color_input| {
 			let c = node_color_input.rgba();
 			draw_settings.write().node_color = (
-				(c.red * 255.) as u8,
-				(c.green * 255.) as u8,
-				(c.blue * 255.) as u8,
+				(c.red() * 255.) as u8,
+				(c.green() * 255.) as u8,
+				(c.blue() * 255.) as u8,
 			);
 			tx.write().redraw = true;
 		}
@@ -476,9 +522,9 @@ fn build_ui(
 		move |bg_color_input| {
 			let c = bg_color_input.rgba();
 			draw_settings.write().bg_color = (
-				(c.red * 255.) as u8,
-				(c.green * 255.) as u8,
-				(c.blue * 255.) as u8,
+				(c.red() * 255.) as u8,
+				(c.green() * 255.) as u8,
+				(c.blue() * 255.) as u8,
 			);
 			tx.write().redraw = true;
 		}

@@ -257,6 +257,8 @@ fn main() {
 		Nodes::Degree(nb_nodes),
 		None,
 		Settings {
+			#[cfg(feature = "barnes_hut")]
+			barnes_hut: None,
 			chunk_size: Some(256),
 			dimensions: 3,
 			dissuade_hubs: false,
@@ -278,7 +280,7 @@ fn main() {
 	let sphere = ico_sphere(NODE_RADIUS, 2);
 	//let cylinder = cylinder(EDGE_RADIUS, 1.0, 6);
 	let mut solid = Vec::with_capacity(
-		sphere.len() * nb_nodes, /* + cylinder.len() * edges.len()*/
+		sphere.len() * nb_nodes, /* + cylinder.len() * edges.len() */
 	);
 
 	for (i, node) in layout.points.iter().enumerate() {

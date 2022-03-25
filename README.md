@@ -66,7 +66,7 @@ There is a binding for use in Python, [fa2rs](https://framagit.org/ZettaScript/f
 
 ## License
 
-GNU AGPL v3, CopyLeft 2020-2021 Pascal Engélibert
+GNU AGPL v3, CopyLeft 2020-2022 Pascal Engélibert
 
 Implementation details inspired by:
 * [python-forceatlas2](https://code.launchpad.net/forceatlas2-python) (GNU GPL v3, CopyLeft 2016 Max Shinn)

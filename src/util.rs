@@ -45,6 +45,7 @@ pub fn norm<T: Coord>(n: &Position<T>) -> T {
 }
 
 /// Allocate Vec without initializing
+#[allow(clippy::uninit_vec)]
 pub fn valloc<T>(n: usize) -> Vec<T> {
 	let mut v = Vec::with_capacity(n);
 	unsafe {

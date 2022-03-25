@@ -114,6 +114,8 @@ fn main() {
 	println!("Nodes: {}", nodes);
 
 	let mut settings = Settings {
+		#[cfg(feature = "barnes_hut")]
+		barnes_hut: None,
 		chunk_size: None,
 		dimensions: 2,
 		dissuade_hubs: false,
