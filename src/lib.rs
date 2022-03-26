@@ -1,3 +1,4 @@
+#![feature(drain_filter)]
 #![feature(specialization)]
 #![feature(stdsimd)]
 #![feature(trait_alias)]
@@ -21,6 +22,31 @@ impl<'a, T: Coord + std::fmt::Debug> Layout<T>
 where
 	Layout<T>: forces::Repulsion<T> + forces::Attraction<T>,
 {
+	/// Instantiates an empty layout
+	pub fn empty(weighted: bool, settings: Settings<T>) -> Self {
+		Self {
+			edges: Vec::new(),
+			points: PointList {
+				dimensions: settings.dimensions,
+				points: Vec::new(),
+			},
+			masses: Vec::new(),
+			speeds: PointList {
+				dimensions: settings.dimensions,
+				points: Vec::new(),
+			},
+			old_speeds: PointList {
+				dimensions: settings.dimensions,
+				points: Vec::new(),
+			},
+			weights: if weighted { Some(Vec::new()) } else { None },
+			fn_attraction: Self::choose_attraction(&settings),
+			fn_gravity: forces::choose_gravity(&settings),
+			fn_repulsion: Self::choose_repulsion(&settings),
+			settings,
+		}
+	}
+
 	/// Instanciates a randomly positioned layout from an undirected graph
 	///
 	/// Assumes edges `(n1, n2)` respect `n1 < n2`.
@@ -144,6 +170,89 @@ where
 
 	pub fn get_settings(&self) -> &Settings<T> {
 		&self.settings
+	}
+
+	/// New node indices in arguments start at the current number of nodes
+	pub fn add_nodes(
+		&mut self,
+		edges: &[Edge],
+		nodes: Nodes<T>,
+		positions: &[T],
+		weights: Option<&[T]>,
+	) {
+		let new_nodes;
+		match nodes {
+			Nodes::Degree(nb_nodes) => {
+				new_nodes = nb_nodes;
+				self.masses.extend((0..nb_nodes).map(|_| T::zero()));
+				for (n1, n2) in edges.iter() {
+					self.masses[*n1] += T::one();
+					self.masses[*n2] += T::one();
+				}
+			}
+			Nodes::Mass(masses) => {
+				new_nodes = masses.len();
+				self.masses.extend_from_slice(&masses);
+			}
+		}
+		assert_eq!(positions.len(), new_nodes * self.settings.dimensions);
+		self.points.points.extend_from_slice(positions);
+		self.speeds
+			.points
+			.extend((0..positions.len()).map(|_| T::zero()));
+		self.old_speeds
+			.points
+			.extend((0..positions.len()).map(|_| T::zero()));
+		self.edges.extend_from_slice(edges);
+		match (weights, &mut self.weights) {
+			(Some(new_weights), Some(weights)) => {
+				assert_eq!(edges.len(), new_weights.len());
+				weights.extend_from_slice(new_weights);
+			}
+			(None, None) => {}
+			_ => panic!("Inconsistent weighting"),
+		}
+	}
+
+	/// Remove edges by index
+	pub fn remove_edge(&mut self, edge: usize) {
+		self.edges.remove(edge);
+		if let Some(weights) = &mut self.weights {
+			weights.remove(edge);
+		}
+	}
+
+	/// Remove a node by index
+	///
+	/// Assumes it has a null degree
+	pub fn remove_node(&mut self, node: usize) where T: Copy {
+		self.points.remove(node);
+		self.masses.remove(node);
+		self.speeds.remove(node);
+		self.old_speeds.remove(node);
+	}
+
+	/// Remove a node's incident edges
+	pub fn remove_incident_edges(&mut self, node: usize) {
+		self.edges.drain_filter(|(n1, n2)| {
+			if *n1 == node || *n2 == node {
+				true
+			} else {
+				if *n1 > node {
+					*n1 -= 1;
+				}
+				if *n2 > node {
+					*n2 -= 1;
+				}
+				false
+			}
+		});
+	}
+
+	/// Remove a node by index, automatically removing all its incident edges
+	pub fn remove_node_with_edges(&mut self, node: usize) where T: Copy {
+		self.remove_incident_edges(node);
+		self.remove_node(node);
 	}
 
 	/// Changes layout settings

@@ -203,6 +203,14 @@ impl<'a, T: Coord> PointList<T> {
 			offset: offset * self.dimensions,
 		}
 	}
+
+	pub fn remove(&mut self, mut offset: usize) where T: Copy {
+		offset *= self.dimensions;
+		let len = self.points.len();
+		self.points
+			.copy_within(offset + self.dimensions..len, offset);
+		self.points.truncate(self.points.len() - self.dimensions);
+	}
 }
 
 /// Uniform random distribution of points on a n-sphere
