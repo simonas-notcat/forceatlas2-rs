@@ -249,7 +249,7 @@ pub fn apply_repulsion_2d_simd_f64(layout: &mut Layout<f64>) {
 				let degs3 = n1_mass * (layout.masses.get_unchecked(n2 + 1) + 1.);
 				let f = _mm_mul_pd(
 					_mm_div_pd(_mm_set_pd(degs3, degs2), d2),
-					_mm_set_pd(layout.settings.kr, layout.settings.kr),
+					_mm_set1_pd(layout.settings.kr),
 				);
 
 				/*assert_eq!(std::mem::transmute::<__m128d, (f64,f64)>(f), (
@@ -435,12 +435,7 @@ pub fn apply_repulsion_2d_simd_f32(layout: &mut Layout<f32>) {
 				let degs5 = n1_mass * (layout.masses.get_unchecked(n2 + 3) + 1.);
 				let f = _mm_mul_ps(
 					_mm_div_ps(_mm_set_ps(degs5, degs4, degs3, degs2), d2),
-					_mm_set_ps(
-						layout.settings.kr,
-						layout.settings.kr,
-						layout.settings.kr,
-						layout.settings.kr,
-					),
+					_mm_set1_ps(layout.settings.kr),
 				);
 
 				/*assert_eq!(std::mem::transmute::<__m128, (f32,f32,f32,f32)>(f), (
@@ -569,10 +564,8 @@ pub fn apply_repulsion_2d_simd_f64_parallel(layout: &mut Layout<f64>) {
 
 						let degs2 = n1_mass * (*n2.mass + 1.);
 						let degs3 = n1_mass * (*n2.mass.add(1) + 1.);
-						let f = _mm_mul_pd(
-							_mm_div_pd(_mm_set_pd(degs3, degs2), d2),
-							_mm_set_pd(kr, kr),
-						);
+						let f =
+							_mm_mul_pd(_mm_div_pd(_mm_set_pd(degs3, degs2), d2), _mm_set1_pd(kr));
 
 						let (n1_speed_v, n23_speed_v): (__m128d, __m256d) =
 							(_mm_loadu_pd(n1.speed), _mm256_loadu_pd(n2.speed));
@@ -676,7 +669,7 @@ pub fn apply_repulsion_2d_simd_f32_parallel(layout: &mut Layout<f32>) {
 						let degs5 = n1_mass * (*n2.mass.add(3) + 1.);
 						let f = _mm_mul_ps(
 							_mm_div_ps(_mm_set_ps(degs5, degs4, degs3, degs2), d2),
-							_mm_set_ps(kr, kr, kr, kr),
+							_mm_set1_ps(kr),
 						);
 
 						let (n1_speed_v, n2345_speed_v): (__m128, __m256) =
@@ -792,6 +785,130 @@ pub fn apply_repulsion_3d_parallel<T: Copy + Coord + std::fmt::Debug + Send + Sy
 					unsafe { n2.speed.get_unchecked_mut(0) }.add_assign(vx);
 					unsafe { n2.speed.get_unchecked_mut(1) }.add_assign(vy);
 					unsafe { n2.speed.get_unchecked_mut(2) }.add_assign(vz);
+				}
+			}
+		});
+	}
+}
+
+#[cfg(all(feature = "parallel", any(target_arch = "x86", target_arch = "x86_64")))]
+pub fn apply_repulsion_3d_simd_f32_parallel(layout: &mut Layout<f32>) {
+	let chunk_size = layout.settings.chunk_size.unwrap();
+	let kr = layout.settings.kr;
+	for chunk_iter in layout.iter_par_simd_nodes::<2>(chunk_size) {
+		chunk_iter.for_each(|n1_iter| {
+			let n2_end = n1_iter.n2_end_ind;
+
+			for mut n1 in n1_iter {
+				let n1_mass = n1.mass + 1.0f32;
+				let n1_pos = unsafe {
+					_mm256_set_ps(
+						0.0,
+						0.0,
+						*n1.pos.get_unchecked(2),
+						*n1.pos.get_unchecked(1),
+						*n1.pos.get_unchecked(0),
+						*n1.pos.get_unchecked(2),
+						*n1.pos.get_unchecked(1),
+						*n1.pos.get_unchecked(0),
+					)
+				};
+
+				// This loop iterates on nodes by 2
+				for n2 in &mut n1.n2_iter {
+					unsafe {
+						// [n2_x, n2_y, n2_z, n3_x, n3_y, n3_z, ?, ?]
+						let n23_pos = _mm256_loadu_ps(n2.pos);
+
+						// [dx(n1,n2), dy(n1,n2), dz(n1,n2), dx(n1,n3), dy(n1,n3), dz(n1,n3), ?, ?]
+						let dxyz = _mm256_sub_ps(n23_pos, n1_pos);
+
+						// [dx(n1,n2)^2, dy(n1,n2)^2, dz(n1,n2)^2, dx(n1,n3)^2, dy(n1,n3)^2, dz(n1,n3)^2, ?, ?]
+						let dxyz2 = _mm256_mul_ps(dxyz, dxyz);
+
+						// ([dx(n1,n2)^2, dx(n1,n3)^2, dy(n1,n2)^2, dy(n1,n3)^2], [dz(n1,n2)^2, dz(n1,n3)^2, ?, ?])
+						let (dxy2, dz2): (__m128, __m128) =
+							std::mem::transmute(_mm256_permutevar8x32_ps(
+								dxyz2,
+								_mm256_set_epi32(7, 6, 5, 2, 4, 1, 3, 0),
+							));
+
+						// [d(n1,n2)^2, d(n1,n3)^2, ?, ?]
+						let d2 = _mm_add_ps(
+							_mm_add_ps(dxy2, dz2),
+							_mm_permutevar_ps(dxy2, _mm_set_epi32(1, 0, 3, 2)),
+						);
+						// TODO maybe check zero
+
+						let degs2 = n1_mass * (*n2.mass + 1.);
+						let degs3 = n1_mass * (*n2.mass.add(1) + 1.);
+
+						let (n1_speed_v, n23_speed_v): (__m128, __m256) =
+							(_mm_loadu_ps(n1.speed), _mm256_loadu_ps(n2.speed));
+
+						let fxyz = _mm256_mul_ps(
+							dxyz,
+							_mm256_mul_ps(
+								_mm256_div_ps(
+									_mm256_set_ps(
+										0.0, 0.0, degs3, degs3, degs3, degs2, degs2, degs2,
+									),
+									_mm256_permutevar8x32_ps(
+										_mm256_set_m128(d2, d2),
+										_mm256_set_epi32(7, 6, 1, 1, 1, 0, 0, 0),
+									),
+								),
+								_mm256_set1_ps(kr),
+							),
+						);
+
+						// TODO write the 2 correct remaining bytes at the end
+						_mm256_storeu_ps(n2.speed, _mm256_add_ps(n23_speed_v, fxyz));
+						let fxyz = _mm256_permutevar8x32_ps(
+							fxyz,
+							_mm256_set_epi32(7, 5, 4, 3, 6, 2, 1, 0),
+						);
+						_mm_storeu_ps(
+							n1.speed,
+							_mm_sub_ps(
+								n1_speed_v,
+								_mm_add_ps(
+									_mm256_extractf128_ps(fxyz, 1),
+									_mm256_extractf128_ps(fxyz, 0),
+								),
+							),
+						);
+					}
+				}
+
+				// Remaining iterations
+				let layout = unsafe { n1.n2_iter.layout.0.as_mut() };
+				for n2 in n1.n2_iter.ind..n2_end {
+					let n2_pos = unsafe { layout.points.get_unchecked(n2) };
+
+					let dx = unsafe { *n2_pos.get_unchecked(0) - *n1.pos.get_unchecked(0) };
+					let dy = unsafe { *n2_pos.get_unchecked(1) - *n1.pos.get_unchecked(1) };
+					let dz = unsafe { *n2_pos.get_unchecked(2) - *n1.pos.get_unchecked(2) };
+
+					let d2 = dx * dx + dy * dy + dz * dz;
+					if d2.is_zero() {
+						continue;
+					}
+
+					let f = (n1_mass * (unsafe { layout.masses.get_unchecked(n2) } + 1.)) / d2 * kr;
+
+					let n2_speed = layout.speeds.get_mut(n2);
+					let vx = f * dx;
+					let vy = f * dy;
+					let vz = f * dz;
+					unsafe {
+						*n1.speed -= vx;
+						*n1.speed.add(1) -= vy;
+						*n1.speed.add(2) -= vz;
+					}
+					unsafe { n2_speed.get_unchecked_mut(0) }.add_assign(vx);
+					unsafe { n2_speed.get_unchecked_mut(1) }.add_assign(vy);
+					unsafe { n2_speed.get_unchecked_mut(2) }.add_assign(vz);
 				}
 			}
 		});

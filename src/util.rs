@@ -204,7 +204,10 @@ impl<'a, T: Coord> PointList<T> {
 		}
 	}
 
-	pub fn remove(&mut self, mut offset: usize) where T: Copy {
+	pub fn remove(&mut self, mut offset: usize)
+	where
+		T: Copy,
+	{
 		offset *= self.dimensions;
 		let len = self.points.len();
 		self.points

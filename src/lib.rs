@@ -225,7 +225,10 @@ where
 	/// Remove a node by index
 	///
 	/// Assumes it has a null degree
-	pub fn remove_node(&mut self, node: usize) where T: Copy {
+	pub fn remove_node(&mut self, node: usize)
+	where
+		T: Copy,
+	{
 		self.points.remove(node);
 		self.masses.remove(node);
 		self.speeds.remove(node);
@@ -250,7 +253,10 @@ where
 	}
 
 	/// Remove a node by index, automatically removing all its incident edges
-	pub fn remove_node_with_edges(&mut self, node: usize) where T: Copy {
+	pub fn remove_node_with_edges(&mut self, node: usize)
+	where
+		T: Copy,
+	{
 		self.remove_incident_edges(node);
 		self.remove_node(node);
 	}
