@@ -64,7 +64,8 @@ pub fn apply_attraction_3d<T: Copy + Coord + std::fmt::Debug>(layout: &mut Layou
 		let weight = layout
 			.weights
 			.as_ref()
-			.map_or_else(T::one, |weights| weights[edge]);
+			.map_or_else(T::one, |weights| weights[edge])
+			* layout.settings.ka;
 
 		let (n1_speed, n2_speed) = layout.speeds.get_2_mut(n1, n2);
 
