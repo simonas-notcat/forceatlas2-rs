@@ -1,12 +1,14 @@
 use crate::{iter::*, layout::*, util::*};
 
 use itertools::izip;
+use num_traits::Zero;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
+use std::ops::{AddAssign, SubAssign};
 
 pub fn apply_repulsion<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 	let kr = layout.settings.kr.clone();

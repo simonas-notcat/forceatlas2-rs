@@ -9,6 +9,7 @@ use sdl2::{
 };
 use std::{
 	io::BufRead,
+	ops::AddAssign,
 	sync::{Arc, RwLock},
 	thread,
 	time::Duration,

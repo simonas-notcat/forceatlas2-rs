@@ -113,7 +113,7 @@ where
 	///
 	/// Assumes edges `(n1, n2)` respect `n1 < n2`
 	///
-	/// `nodes` is a list of coordinates, e.g. `[x1, y1, x2, y2, ...]`.
+	/// `positions` is a list of coordinates, e.g. `[x1, y1, x2, y2, ...]`.
 	pub fn from_position_graph(
 		edges: Vec<Edge>,
 		nodes: Nodes<T>,
