@@ -84,7 +84,7 @@ impl<T: Coord> Layout<T> {
 			ind: 0,
 			layout: SendPtr(self.into()),
 			offset: 0,
-			_phantom: PhantomData::default(),
+			_phantom: PhantomData,
 		}
 	}
 }
@@ -114,7 +114,7 @@ impl<T: Coord + Send> Layout<T> {
 						n2_start_ind: x0 + y0,
 						n2_end: (x0_d + y0_d + chunk_size_d).min(n),
 						offset: x0_d,
-						_phantom: PhantomData::default(),
+						_phantom: PhantomData,
 					}
 				})
 		})
@@ -148,7 +148,7 @@ impl<T: Coord + Send> Layout<T> {
 						n2_end: (x0_d + y0_d + chunk_size_d).min(n_d),
 						n2_end_ind: (x0 + y0 + chunk_size).min(n),
 						offset: x0_d,
-						_phantom: PhantomData::default(),
+						_phantom: PhantomData,
 					}
 				})
 		})

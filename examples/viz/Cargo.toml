@@ -6,10 +6,10 @@ edition = "2021"
 [dependencies]
 cam-geom = "0.14.0"
 forceatlas2 = { path = "../..", features = ["barnes_hut"] }
-gio = "0.17.9"
-glib = "0.17.9"
+gio = "0.17.10"
+glib = "0.17.10"
 gdk = "0.17.1"
-gdk-pixbuf = "0.17.0"
+gdk-pixbuf = "0.17.10"
 gtk = "0.17.1"
 nalgebra = "0.32.2"
 parking_lot = "0.12.1"

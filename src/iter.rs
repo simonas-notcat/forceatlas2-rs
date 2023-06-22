@@ -55,7 +55,7 @@ impl<'a, T: Coord> Iterator for NodeIter<'a, T> {
 						ind: next_ind,
 						layout: self.layout,
 						offset: next_offset,
-						_phantom: PhantomData::default(),
+						_phantom: PhantomData,
 					},
 					pos: unsafe { layout.points.points.get_unchecked(self.offset..next_offset) },
 					speed: unsafe {
@@ -167,7 +167,7 @@ mod parallel {
 							ind: self.n2_start_ind.max(next_ind),
 							layout: self.layout,
 							offset: self.n2_start.max(next_offset),
-							_phantom: PhantomData::default(),
+							_phantom: PhantomData,
 						},
 						pos: unsafe {
 							layout.points.points.get_unchecked(self.offset..next_offset)
@@ -286,7 +286,7 @@ mod parallel_simd {
 							ind: n2_start_ind,
 							layout: self.layout,
 							offset: self.n2_start.max(next_offset),
-							_phantom: PhantomData::default(),
+							_phantom: PhantomData,
 						},
 						pos: unsafe {
 							layout.points.points.get_unchecked(self.offset..next_offset)

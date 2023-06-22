@@ -274,6 +274,19 @@ impl<T> Clone for SendPtr<T> {
 unsafe impl<T> Send for SendPtr<T> {}
 unsafe impl<T> Sync for SendPtr<T> {}
 
+/// Keeps only items for which filter returns true.
+/// Does not preserve order.
+pub fn drain_filter_swap<T, F: Fn(&mut T) -> bool>(v: &mut Vec<T>, filter: F) {
+	let mut i = 0;
+	while let Some(item) = v.get_mut(i) {
+		if (filter)(item) {
+			i += 1;
+		} else {
+			v.swap_remove(i);
+		}
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -297,5 +310,12 @@ mod tests {
 		let (s1, s2) = a.get_2_mut(1, 3);
 		assert_eq!(s1.to_vec(), [2., 3.]);
 		assert_eq!(s2.to_vec(), [6., 7.]);
+	}
+
+	#[test]
+	fn test_drain_filter_swap() {
+		let mut v = vec![1, -2, 3, -4, -5, 6, 7, 8, -9, 10];
+		drain_filter_swap(&mut v, |n| *n > 0);
+		assert_eq!(&v, &[1, 10, 3, 8, 7, 6]);
 	}
 }

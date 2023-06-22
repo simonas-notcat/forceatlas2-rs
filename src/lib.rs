@@ -1,4 +1,3 @@
-#![feature(drain_filter)]
 #![feature(specialization)]
 #![feature(stdsimd)]
 #![feature(trait_alias)]
@@ -237,9 +236,9 @@ where
 
 	/// Remove a node's incident edges
 	pub fn remove_incident_edges(&mut self, node: usize) {
-		self.edges.drain_filter(|(n1, n2)| {
+		util::drain_filter_swap(&mut self.edges, |(n1, n2)| {
 			if *n1 == node || *n2 == node {
-				true
+				false
 			} else {
 				if *n1 > node {
 					*n1 -= 1;
@@ -247,7 +246,7 @@ where
 				if *n2 > node {
 					*n2 -= 1;
 				}
-				false
+				true
 			}
 		});
 	}
