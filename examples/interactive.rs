@@ -133,6 +133,7 @@ fn main() {
 		edges.clone(),
 		Nodes::Degree(nodes),
 		None,
+		None,
 		settings.clone(),
 	)));
 	let size = Arc::new(RwLock::new(SIZE));
@@ -233,8 +234,13 @@ fn main() {
 				let mut layout = layout.write().unwrap();
 				let mut iters = iters.write().unwrap();
 				*iters = 0;
-				*layout =
-					Layout::from_graph(edges.clone(), Nodes::Degree(nodes), None, settings.clone());
+				*layout = Layout::from_graph(
+					edges.clone(),
+					Nodes::Degree(nodes),
+					None,
+					None,
+					settings.clone(),
+				);
 			}
 			Some("p") => println!(
 				"ka={}  kg={}  kr={}  cs={:?}",

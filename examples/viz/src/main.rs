@@ -66,6 +66,7 @@ fn main() {
 	let layout = Arc::new(RwLock::new(Layout::<T>::from_graph(
 		edges,
 		Nodes::Degree(nodes),
+		None,
 		Some(weights),
 		settings.clone(),
 	)));

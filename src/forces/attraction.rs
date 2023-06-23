@@ -170,7 +170,7 @@ pub fn apply_attraction_dh_log<T: Coord + std::fmt::Debug>(layout: &mut Layout<T
 }
 
 pub fn apply_attraction_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
-	let node_size = &layout.settings.prevent_overlapping.as_ref().unwrap().0;
+	let sizes = layout.sizes.as_ref().unwrap();
 	for (edge, (n1, n2)) in layout.edges.iter().enumerate() {
 		let mut d = T::zero();
 		let n1_pos = layout.points.get(*n1);
@@ -182,7 +182,7 @@ pub fn apply_attraction_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 		}
 		d = d.sqrt();
 
-		let dprime = d.clone() - node_size.clone();
+		let dprime = d.clone() - sizes[*n1].clone() - sizes[*n2].clone();
 		if dprime.non_positive() {
 			continue;
 		}
@@ -204,7 +204,7 @@ pub fn apply_attraction_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 }
 
 pub fn apply_attraction_dh_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
-	let node_size = &layout.settings.prevent_overlapping.as_ref().unwrap().0;
+	let sizes = layout.sizes.as_ref().unwrap();
 	for (edge, (n1, n2)) in layout.edges.iter().enumerate() {
 		let mut d = T::zero();
 		let n1_pos = layout.points.get(*n1);
@@ -216,7 +216,7 @@ pub fn apply_attraction_dh_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>
 		}
 		d = d.sqrt();
 
-		let dprime = d.clone() - node_size.clone();
+		let dprime = d.clone() - sizes[*n1].clone() - sizes[*n2].clone();
 		if dprime.non_positive() {
 			dbg!(dprime);
 			continue;
@@ -240,7 +240,7 @@ pub fn apply_attraction_dh_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>
 }
 
 pub fn apply_attraction_log_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
-	let node_size = &layout.settings.prevent_overlapping.as_ref().unwrap().0;
+	let sizes = layout.sizes.as_ref().unwrap();
 	for (edge, (n1, n2)) in layout.edges.iter().enumerate() {
 		let mut d = T::zero();
 		let n1_pos = layout.points.get(*n1);
@@ -252,7 +252,7 @@ pub fn apply_attraction_log_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T
 		}
 		d = d.sqrt();
 
-		let dprime = d - node_size.clone();
+		let dprime = d - sizes[*n1].clone() - sizes[*n2].clone();
 		if dprime.non_positive() {
 			continue;
 		}
@@ -274,7 +274,7 @@ pub fn apply_attraction_log_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T
 }
 
 pub fn apply_attraction_dh_log_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
-	let node_size = &layout.settings.prevent_overlapping.as_ref().unwrap().0;
+	let sizes = layout.sizes.as_ref().unwrap();
 	for (edge, (n1, n2)) in layout.edges.iter().enumerate() {
 		let mut d = T::zero();
 		let n1_pos = layout.points.get(*n1);
@@ -286,7 +286,7 @@ pub fn apply_attraction_dh_log_po<T: Coord + std::fmt::Debug>(layout: &mut Layou
 		}
 		d = d.sqrt();
 
-		let dprime = d - node_size.clone();
+		let dprime = d - sizes[*n1].clone() - sizes[*n2].clone();
 		if dprime.non_positive() {
 			continue;
 		}

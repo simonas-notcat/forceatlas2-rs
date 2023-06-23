@@ -570,6 +570,7 @@ fn build_ui(
 			*layout = Layout::from_graph(
 				layout.edges.clone(),
 				Nodes::Degree(layout.masses.len()),
+				None,
 				layout.weights.clone(),
 				settings.clone(),
 			);

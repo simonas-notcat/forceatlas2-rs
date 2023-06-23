@@ -32,11 +32,12 @@ pub struct Settings<T: Coord> {
 	pub kr: T,
 	/// Logarithmic attraction
 	pub lin_log: bool,
-	/// Prevent node overlapping for a prettier graph (node_size, kr_prime).
+	/// Prevent node overlapping for a prettier graph.
 	///
-	/// `node_size` is the radius around a node where the repulsion coefficient is `kr_prime`.
+	/// Value is `kr_prime`.
+	/// Requires `layout.sizes` to be `Some`.
 	/// `kr_prime` is arbitrarily set to `100.0` in Gephi implementation.
-	pub prevent_overlapping: Option<(T, T)>,
+	pub prevent_overlapping: Option<T>,
 	/// Speed factor
 	pub speed: T,
 	/// Gravity does not decrease with distance, resulting in a more compact graph.
@@ -66,6 +67,7 @@ impl<T: Coord> Default for Settings<T> {
 pub struct Layout<T: Coord> {
 	pub edges: Vec<Edge>,
 	pub masses: Vec<T>,
+	pub sizes: Option<Vec<T>>,
 	/// List of the nodes' positions
 	pub points: PointList<T>,
 	pub(crate) settings: Settings<T>,
@@ -170,6 +172,7 @@ mod test {
 				vec![],
 				Nodes::Degree(n_nodes),
 				None,
+				None,
 				Settings::default(),
 			);
 			let mut hits = iproduct!(0..n_nodes, 0..n_nodes)
@@ -194,6 +197,7 @@ mod test {
 			let mut layout = Layout::<f32>::from_graph(
 				vec![],
 				Nodes::Mass((1..n_nodes + 1).map(|i| i as f32).collect()),
+				None,
 				None,
 				Settings::default(),
 			);
@@ -242,6 +246,7 @@ mod test {
 			let mut layout = Layout::<f32>::from_graph(
 				vec![],
 				Nodes::Mass((1..n_nodes + 1).map(|i| i as f32).collect()),
+				None,
 				None,
 				Settings::default(),
 			);

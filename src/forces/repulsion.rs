@@ -919,18 +919,25 @@ pub fn apply_repulsion_3d_simd_f32_parallel(layout: &mut Layout<f32>) {
 
 pub fn apply_repulsion_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 	let mut di = valloc(layout.settings.dimensions);
-	let (node_size, krprime) = unsafe {
+	let krprime = unsafe {
 		layout
 			.settings
 			.prevent_overlapping
 			.as_ref()
 			.unwrap_unchecked()
 	};
-	for (n1, (n1_mass, n1_pos)) in layout.masses.iter().zip(layout.points.iter()).enumerate() {
+	let sizes = layout.sizes.as_ref().unwrap();
+	for (n1, ((n1_mass, n1_pos), n1_size)) in layout
+		.masses
+		.iter()
+		.zip(layout.points.iter())
+		.zip(sizes.iter())
+		.enumerate()
+	{
 		let mut n2_iter = layout.points.iter();
 		let n1_mass = n1_mass.clone() + T::one();
 		n2_iter.offset = (n1 + 1) * layout.settings.dimensions;
-		for (n2, n2_pos) in (0..n1).zip(&mut n2_iter) {
+		for ((n2, n2_pos), n2_size) in (0..n1).zip(&mut n2_iter).zip(sizes.iter()) {
 			di.clone_from_slice(n2_pos);
 
 			let d2 = di
@@ -946,7 +953,7 @@ pub fn apply_repulsion_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 			}
 
 			let d = d2.clone().sqrt();
-			let dprime = d.clone() - node_size.clone();
+			let dprime = d.clone() - n1_size.clone() - n2_size.clone();
 
 			let f = n1_mass.clone()
 				* (unsafe { layout.masses.get_unchecked(n2) }.clone() + T::one())
@@ -1025,17 +1032,21 @@ pub fn apply_repulsion_bh_2d_po(layout: &mut Layout<f64>) {
 		layout.settings.barnes_hut.unwrap(),
 	);
 	let kr = layout.settings.kr;
-	let (node_size, krprime) = unsafe { layout.settings.prevent_overlapping.unwrap_unchecked() };
+	let krprime = unsafe { layout.settings.prevent_overlapping.unwrap_unchecked() };
+	let sizes = layout.sizes.as_ref().unwrap();
 
 	particles
 		.into_iter()
 		.zip(layout.speeds.iter_mut())
 		.zip(layout.masses.iter())
-		.for_each(|((particle, speed), mass)| {
-			let nbody_barnes_hut::vector_2d::Vector2D { x, y } =
-				tree.calc_forces_on_particle(particle.position, mass + 1., |d2, m1, dv, m2| {
+		.zip(sizes.iter())
+		.for_each(|(((particle, speed), mass), size)| {
+			let nbody_barnes_hut::vector_2d::Vector2D { x, y } = tree.calc_forces_on_particle(
+				particle.position,
+				(mass + 1., size),
+				|d2, m1, dv, (m2, size2)| {
 					let d = d2.sqrt();
-					let dprime = d - node_size;
+					let dprime = d - size - size2;
 					(if dprime.positive() {
 						kr / dprime
 					} else if dprime.is_zero() {
@@ -1043,7 +1054,8 @@ pub fn apply_repulsion_bh_2d_po(layout: &mut Layout<f64>) {
 					} else {
 						krprime
 					}) * m1 * m2 / d * dv
-				});
+				},
+			);
 			speed[0] -= x;
 			speed[1] -= y;
 		});
@@ -1109,17 +1121,21 @@ pub fn apply_repulsion_bh_3d_po(layout: &mut Layout<f64>) {
 		layout.settings.barnes_hut.unwrap(),
 	);
 	let kr = layout.settings.kr;
-	let (node_size, krprime) = unsafe { layout.settings.prevent_overlapping.unwrap_unchecked() };
+	let krprime = unsafe { layout.settings.prevent_overlapping.unwrap_unchecked() };
+	let sizes = layout.sizes.as_ref().unwrap();
 
 	particles
 		.into_iter()
 		.zip(layout.speeds.iter_mut())
 		.zip(layout.masses.iter())
-		.for_each(|((particle, speed), mass)| {
-			let nbody_barnes_hut::vector_3d::Vector3D { x, y, z } =
-				tree.calc_forces_on_particle(particle.position, mass + 1., |d2, m1, dv, m2| {
+		.zip(sizes.iter())
+		.for_each(|(((particle, speed), mass), size)| {
+			let nbody_barnes_hut::vector_3d::Vector3D { x, y, z } = tree.calc_forces_on_particle(
+				particle.position,
+				(mass + 1., size),
+				|d2, m1, dv, (m2, size2)| {
 					let d = d2.sqrt();
-					let dprime = d - node_size;
+					let dprime = d - size - size2;
 					(if dprime.positive() {
 						kr / dprime
 					} else if dprime.is_zero() {
@@ -1131,7 +1147,8 @@ pub fn apply_repulsion_bh_3d_po(layout: &mut Layout<f64>) {
 					} else {
 						krprime
 					}) * m1 * m2 / d * dv
-				});
+				},
+			);
 			speed[0] -= x;
 			speed[1] -= y;
 			speed[2] -= z;

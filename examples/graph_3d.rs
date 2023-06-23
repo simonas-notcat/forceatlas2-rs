@@ -256,6 +256,7 @@ fn main() {
 		edges,
 		Nodes::Degree(nb_nodes),
 		None,
+		None,
 		Settings {
 			#[cfg(feature = "barnes_hut")]
 			barnes_hut: None,

@@ -30,6 +30,11 @@ where
 				points: Vec::new(),
 			},
 			masses: Vec::new(),
+			sizes: if settings.prevent_overlapping.is_some() {
+				Some(Vec::new())
+			} else {
+				None
+			},
 			speeds: PointList {
 				dimensions: settings.dimensions,
 				points: Vec::new(),
@@ -53,6 +58,7 @@ where
 	pub fn from_graph(
 		edges: Vec<Edge>,
 		nodes: Nodes<T>,
+		sizes: Option<Vec<T>>,
 		weights: Option<Vec<T>>,
 		settings: Settings<T>,
 	) -> Self
@@ -79,6 +85,12 @@ where
 			Nodes::Mass(masses) => masses,
 		};
 
+		if let Some(sizes) = &sizes {
+			assert_eq!(sizes.len(), nodes.len());
+		} else {
+			assert!(settings.prevent_overlapping.is_none());
+		}
+
 		let nb = nodes.len() * settings.dimensions;
 		Self {
 			edges,
@@ -92,6 +104,7 @@ where
 				},
 			},
 			masses: nodes,
+			sizes,
 			speeds: PointList {
 				dimensions: settings.dimensions,
 				points: (0..nb).map(|_| T::zero()).collect(),
@@ -116,6 +129,7 @@ where
 	pub fn from_position_graph(
 		edges: Vec<Edge>,
 		nodes: Nodes<T>,
+		sizes: Option<Vec<T>>,
 		positions: Vec<T>,
 		weights: Option<Vec<T>>,
 		settings: Settings<T>,
@@ -142,11 +156,18 @@ where
 			Nodes::Mass(masses) => masses,
 		};
 
+		if let Some(sizes) = &sizes {
+			assert_eq!(sizes.len(), nodes.len());
+		} else {
+			assert!(settings.prevent_overlapping.is_none());
+		}
+
 		let nb = nodes.len() * settings.dimensions;
 		assert_eq!(positions.len(), nb);
 		Self {
 			edges,
 			masses: nodes,
+			sizes,
 			points: PointList {
 				dimensions: settings.dimensions,
 				points: positions,
@@ -351,6 +372,7 @@ mod tests {
 			vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 4)],
 			Nodes::Degree(5),
 			None,
+			None,
 			Settings::default(),
 		);
 
@@ -366,6 +388,7 @@ mod tests {
 		let mut layout = Layout::<f64>::from_position_graph(
 			vec![(0, 1)],
 			Nodes::Degree(2),
+			None,
 			vec![-1.0, -1.0, 1.0, 1.0],
 			None,
 			Settings::default(),
@@ -385,6 +408,7 @@ mod tests {
 		let mut layout = Layout::<f64>::from_position_graph(
 			vec![(0, 1)],
 			Nodes::Degree(2),
+			None,
 			vec![-2.0, -2.0, 1.0, 2.0],
 			None,
 			Settings::default(),
@@ -442,6 +466,7 @@ mod tests {
 		let mut layout = Layout::<f64>::from_position_graph(
 			vec![(0, 1)],
 			Nodes::Degree(2),
+			None,
 			vec![-1.0, -1.0, 1.0, 1.0],
 			None,
 			Settings::default(),
@@ -465,6 +490,7 @@ mod tests {
 		let mut layout = Layout::<f64>::from_position_graph(
 			vec![(0, 1), (1, 2)],
 			Nodes::Degree(3),
+			None,
 			vec![-1.1, -1.0, 0.0, 0.0, 1.0, 1.0],
 			None,
 			Settings {
@@ -506,10 +532,57 @@ mod tests {
 	}
 
 	#[test]
+	fn test_convergence_po() {
+		let mut layout = Layout::<f64>::from_position_graph(
+			vec![(0, 1), (1, 2)],
+			Nodes::Degree(3),
+			Some(vec![1.0, 5.0, 1.0]),
+			vec![-1.1, -1.0, 0.0, 0.0, 1.0, 1.0],
+			None,
+			Settings {
+				#[cfg(feature = "parallel")]
+				chunk_size: None,
+				dimensions: 2,
+				dissuade_hubs: false,
+				ka: 0.5,
+				kg: 0.01,
+				kr: 0.01,
+				lin_log: false,
+				prevent_overlapping: Some(100.),
+				speed: 1.0,
+				strong_gravity: false,
+				#[cfg(feature = "barnes_hut")]
+				barnes_hut: None,
+			},
+		);
+
+		for _ in 0..10 {
+			println!("new iteration");
+			layout.init_iteration();
+			layout.apply_attraction();
+			println!("{:?}", layout.speeds.points);
+			layout.init_iteration();
+			layout.apply_repulsion();
+			println!("{:?}", layout.speeds.points);
+			layout.init_iteration();
+			layout.apply_gravity();
+			println!("{:?}", layout.speeds.points);
+			layout.apply_forces();
+			//layout.iteration();
+
+			dbg!(&layout.points.points);
+			let point_1 = layout.points.get(0);
+			let point_2 = layout.points.get(1);
+			dbg!(((point_2[0] - point_1[0]).powi(2) + (point_2[1] - point_1[1]).powi(2)).sqrt());
+		}
+	}
+
+	#[test]
 	fn check_alloc() {
 		let mut layout = Layout::<f64>::from_graph(
 			vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 4), (3, 4)],
 			Nodes::Degree(5),
+			None,
 			None,
 			Settings::default(),
 		);
