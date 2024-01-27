@@ -1,10 +1,12 @@
+use std::borrow::{Borrow, BorrowMut};
+
 use num_traits::{real::Real, Num, Zero};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct VecN<T, const N: usize>([T; N]);
 
 impl<T, const N: usize> VecN<T, N> {
-	fn norm_squared(self) -> T
+	fn _norm_squared(self) -> T
 	where
 		T: Copy + Num,
 	{
@@ -108,10 +110,72 @@ impl<T> Vec2<T> {
 	}
 }
 
-pub trait Body2<T> {
+pub struct Tree<'a, D, T: 'a, L: 'a, const N: usize> {
+	bump: bumpalo::Bump,
+	phantom: std::marker::PhantomData<([T; N], L, &'a D)>,
+}
+
+impl<'a, T, L, D: Node<T, L, N>, const N: usize> Tree<'a, D, T, L, N> {
+	/// Create an empty tree with preallocated space for a given number of nodes
+	pub fn with_capacity(capacity: usize) -> Self {
+		let bump = bumpalo::Bump::with_capacity(std::mem::size_of::<D>() * capacity);
+		Tree {
+			bump,
+			phantom: Default::default(),
+		}
+	}
+
+	pub fn new_root<'r>(&'r mut self, pos: (VecN<T, N>, VecN<T, N>)) -> Root<'r, D, T, L, N>
+	where
+		'a: 'r,
+	{
+		Root {
+			node: bumpalo::boxed::Box::new_in(D::new(pos), &self.bump),
+			p: Default::default(),
+		}
+	}
+
+	pub fn clear(&mut self) {
+		self.bump.reset();
+	}
+}
+
+pub struct Root<'a, D, T: 'a, L: 'a, const N: usize> {
+	node: bumpalo::boxed::Box<'a, D>,
+	p: std::marker::PhantomData<(T, [L; N])>,
+}
+
+impl<'a, D: Node<T, L, N>, T: 'a, L: 'a, const N: usize> Root<'a, D, T, L, N> {
+	pub fn add_body(&mut self, new_body: L) {
+		BorrowMut::<D>::borrow_mut(&mut self.node).add_body(new_body)
+	}
+	pub fn apply<C: Clone, F: Fn(VecN<T, N>, VecN<T, N>, T, T, C) -> VecN<T, N>>(
+		&self,
+		on: VecN<T, N>,
+		theta: T,
+		custom: C,
+		f: &F,
+	) -> VecN<T, N> {
+		Borrow::<D>::borrow(&self.node).apply(on, theta, custom, f)
+	}
+}
+
+pub trait Body<T, const N: usize> {
 	fn mass(&self) -> T;
-	fn pos(&self) -> Vec2<T>;
+	fn pos(&self) -> VecN<T, N>;
 	fn add_mass(&mut self, mass: T);
+}
+
+pub trait Node<T, L, const N: usize> {
+	fn new(pos: (VecN<T, N>, VecN<T, N>)) -> Self;
+	fn add_body(&mut self, new_body: L);
+	fn apply<C: Clone, F: Fn(VecN<T, N>, VecN<T, N>, T, T, C) -> VecN<T, N>>(
+		&self,
+		on: VecN<T, N>,
+		theta: T,
+		custom: C,
+		f: &F,
+	) -> VecN<T, N>;
 }
 
 pub enum Node2<T, L> {
@@ -128,14 +192,14 @@ pub enum Node2<T, L> {
 	},
 }
 
-impl<T, L: Body2<T>> Node2<T, L>
+impl<T, L: Body<T, 2>> Node<T, L, 2> for Node2<T, L>
 where
-	T: Copy + Real + PartialOrd + std::ops::AddAssign<T>,
+	T: Real,
 {
-	pub fn new(pos: (Vec2<T>, Vec2<T>)) -> Self {
+	fn new(pos: (Vec2<T>, Vec2<T>)) -> Self {
 		Node2::Leaf { body: None, pos }
 	}
-	pub fn add_body(&mut self, new_body: L) {
+	fn add_body(&mut self, new_body: L) {
 		match self {
 			Node2::Branch {
 				nodes,
@@ -149,7 +213,7 @@ where
 
 				*center_of_mass = (*center_of_mass * *mass + new_body_pos * new_body_mass)
 					/ (*mass + new_body_mass);
-				*mass += new_body_mass;
+				*mass = *mass + new_body_mass;
 				nodes[match (new_body_pos.x() < center.x(), new_body_pos.y() < center.y()) {
 					(true, true) => 0,
 					(false, true) => 1,
@@ -207,8 +271,7 @@ where
 			}
 		}
 	}
-
-	pub fn apply<C: Clone, F: Fn(Vec2<T>, Vec2<T>, T, T, C) -> Vec2<T>>(
+	fn apply<C: Clone, F: Fn(Vec2<T>, Vec2<T>, T, T, C) -> Vec2<T>>(
 		&self,
 		on: Vec2<T>,
 		theta: T,

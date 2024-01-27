@@ -1,7 +1,7 @@
 use crate::{
 	iter::*,
 	layout::*,
-	trees::{Body2, Vec2},
+	trees::{Body, Vec2},
 	util::*,
 };
 
@@ -978,7 +978,7 @@ struct NodeBody2<T> {
 	mass: T,
 }
 
-impl<T> Body2<T> for NodeBody2<T>
+impl<T> Body<T, 2> for NodeBody2<T>
 where
 	T: Coord,
 {
@@ -1014,11 +1014,15 @@ pub fn apply_repulsion_bh_2d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>)
 			max_y = point[1];
 		}
 	}
-	// println!("{:?} {:?} {:?} {:?}", min_x, min_y, max_x, max_y);
 
-	let mut tree = crate::trees::Node2::new((Vec2::new(min_x, min_y), Vec2::new(max_x, max_y)));
+	let mut tree =
+			crate::trees::Tree::<crate::trees::Node2<T, NodeBody2<T>>, T, NodeBody2<T>, 2>::with_capacity(
+				layout.masses.len(),
+			);
+	let mut root = tree.new_root((Vec2::new(min_x, min_y), Vec2::new(max_x, max_y)));
+
 	for node in layout.points.iter().zip(layout.masses.iter()) {
-		tree.add_body(NodeBody2 {
+		root.add_body(NodeBody2 {
 			pos: Vec2::new(node.0[0], node.0[1]),
 			mass: *node.1 + T::one(),
 		});
@@ -1033,7 +1037,7 @@ pub fn apply_repulsion_bh_2d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>)
 		.zip(layout.speeds.iter_mut())
 		.zip(layout.masses.iter())
 		.for_each(|((particle, speed), mass)| {
-			let f = tree.apply(
+			let f = root.apply(
 				Vec2::new(particle[0], particle[1]),
 				theta,
 				(),
@@ -1042,6 +1046,8 @@ pub fn apply_repulsion_bh_2d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>)
 			speed[0] -= f.x();
 			speed[1] -= f.y();
 		});
+	std::mem::drop(root);
+	tree.clear();
 }
 
 #[cfg(feature = "barnes_hut")]
