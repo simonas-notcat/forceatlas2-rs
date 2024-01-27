@@ -12,9 +12,9 @@ pub fn apply_gravity<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 		if d.is_zero() {
 			continue;
 		}
-		let f = (mass.clone() + T::one()) * layout.settings.kg.clone() / d;
+		let f = (*mass + T::one()) * layout.settings.kg / d;
 		for (speed, pos) in speed.iter_mut().zip(pos.iter()) {
-			*speed -= f.clone() * pos.clone();
+			*speed -= f * *pos;
 		}
 	}
 }
@@ -25,9 +25,9 @@ pub fn apply_gravity_sg<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 		layout.points.iter(),
 		layout.speeds.iter_mut()
 	) {
-		let f = (mass.clone() + T::one()) * layout.settings.kg.clone();
+		let f = (*mass + T::one()) * layout.settings.kg;
 		for (speed, pos) in speed.iter_mut().zip(pos.iter()) {
-			*speed -= f.clone() * pos.clone();
+			*speed -= f * *pos;
 		}
 	}
 }

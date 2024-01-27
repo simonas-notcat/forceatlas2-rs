@@ -1,23 +1,21 @@
-use maths_traits::{
-	algebra::group_like::{
-		additive::Sub,
-		multiplicative::{Div, DivAssign},
-	},
-	analysis::{ordered::Signed, RealExponential},
+use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
+
+use maths_traits::analysis::ordered::Signed;
+use num_traits::{
+	cast::{FromPrimitive, NumCast},
+	real::Real,
 };
-use num_traits::cast::{FromPrimitive, NumCast};
 #[cfg(feature = "rand")]
 use rand::Rng;
 
-pub trait Coord = Clone
-	+ Div<Self, Output = Self>
+pub trait Coord = AddAssign<Self>
 	+ DivAssign<Self>
 	+ FromPrimitive
+	+ Real
 	+ NumCast
-	//	+ From<f32>
 	+ Signed
-	+ RealExponential
-	+ Sub<Self>
+	+ SubAssign<Self>
+	+ MulAssign<Self>
 	+ std::iter::Sum;
 
 /// n-dimensional position
@@ -41,7 +39,7 @@ pub enum Nodes<T> {
 }
 
 pub fn norm<T: Coord>(n: &Position<T>) -> T {
-	n.iter().map(|i| i.clone().pow_n(2u32)).sum::<T>().sqrt()
+	n.iter().map(|i| *i * *i).sum::<T>().sqrt()
 }
 
 /// Allocate Vec without initializing
@@ -220,24 +218,21 @@ impl<'a, T: Coord> PointList<T> {
 ///
 /// `n` is the number of spatial dimensions (1 => two points; 2 => circle; 3 => sphere; etc.).
 #[cfg(feature = "rand")]
-pub fn _sample_unit_nsphere<T: Coord + Clone + DivAssign<T> + RealExponential, R: Rng>(
-	rng: &mut R,
-	n: usize,
-) -> Vec<T>
+pub fn _sample_unit_nsphere<T: Coord, R: Rng>(rng: &mut R, n: usize) -> Vec<T>
 where
 	rand::distributions::Standard: rand::distributions::Distribution<T>,
-	T: rand::distributions::uniform::SampleUniform + PartialOrd,
+	T: rand::distributions::uniform::SampleUniform,
 {
 	let ray: T = NumCast::from(n).unwrap();
 	let mut v = valloc(n);
 	let mut d = T::zero();
 	for x in v.iter_mut() {
-		*x = rng.gen_range(ray.clone().neg()..ray.clone());
-		d += x.clone().pow_n(2u32);
+		*x = rng.gen_range(ray.neg()..ray);
+		d += *x * *x;
 	}
 	d = d.sqrt();
 	for x in v.iter_mut() {
-		*x /= d.clone();
+		*x /= d;
 	}
 	v
 }
@@ -246,18 +241,15 @@ where
 ///
 /// `n` is the number of spatial dimensions (1 => segment; 2 => square; 3 => cube; etc.).
 #[cfg(feature = "rand")]
-pub fn sample_unit_ncube<T: Coord + Clone + DivAssign<T> + RealExponential, R: Rng>(
-	rng: &mut R,
-	n: usize,
-) -> Vec<T>
+pub fn sample_unit_ncube<T: Coord, R: Rng>(rng: &mut R, n: usize) -> Vec<T>
 where
 	rand::distributions::Standard: rand::distributions::Distribution<T>,
-	T: rand::distributions::uniform::SampleUniform + PartialOrd,
+	T: rand::distributions::uniform::SampleUniform,
 {
 	let ray: T = NumCast::from(n).unwrap();
 	let mut v = valloc(n);
 	for x in v.iter_mut() {
-		*x = rng.gen_range(ray.clone().neg()..ray.clone());
+		*x = rng.gen_range(ray.neg()..ray);
 	}
 	v
 }

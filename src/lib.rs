@@ -2,11 +2,11 @@
 #![feature(stdsimd)]
 #![feature(trait_alias)]
 #![allow(incomplete_features)]
-#![feature(core_intrinsics)]
 
 mod forces;
 mod iter;
 mod layout;
+mod trees;
 mod util;
 
 use forces::{Attraction, Repulsion};
@@ -245,10 +245,7 @@ where
 	/// Remove a node by index
 	///
 	/// Assumes it has a null degree
-	pub fn remove_node(&mut self, node: usize)
-	where
-		T: Copy,
-	{
+	pub fn remove_node(&mut self, node: usize) {
 		self.points.remove(node);
 		self.masses.remove(node);
 		self.speeds.remove(node);
@@ -273,10 +270,7 @@ where
 	}
 
 	/// Remove a node by index, automatically removing all its incident edges
-	pub fn remove_node_with_edges(&mut self, node: usize)
-	where
-		T: Copy,
-	{
+	pub fn remove_node_with_edges(&mut self, node: usize) {
 		self.remove_incident_edges(node);
 		self.remove_node(node);
 	}
@@ -309,7 +303,7 @@ where
 			.iter_mut()
 			.zip(self.old_speeds.points.iter_mut())
 		{
-			*old_speed = speed.clone();
+			*old_speed = *speed;
 			*speed = T::zero();
 		}
 	}
@@ -335,22 +329,22 @@ where
 			let swinging = speed
 				.iter()
 				.zip(old_speed.iter())
-				.map(|(s, old_s)| (s.clone() - old_s.clone()).pow_n(2u32))
+				.map(|(s, old_s)| (*s - *old_s) * (*s - *old_s))
 				.sum::<T>()
 				.sqrt();
 			let traction = speed
 				.iter()
 				.zip(old_speed.iter())
-				.map(|(s, old_s)| (s.clone() + old_s.clone()).pow_n(2u32))
+				.map(|(s, old_s)| (*s + *old_s) * (*s + *old_s))
 				.sum::<T>()
 				.sqrt();
 
-			let f = traction.ln_1p() / (swinging.sqrt() + T::one()) * self.settings.speed.clone();
+			let f = traction.ln_1p() / (swinging.sqrt() + T::one()) * self.settings.speed;
 
 			pos.iter_mut()
 				.zip(speed.iter_mut())
 				.for_each(|(pos, speed)| {
-					*pos += speed.clone() * f.clone();
+					*pos += *speed * f;
 				});
 		}
 	}

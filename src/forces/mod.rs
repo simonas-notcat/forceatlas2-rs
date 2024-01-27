@@ -17,47 +17,9 @@ pub trait Repulsion<T: Coord + std::fmt::Debug> {
 	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T>);
 }
 
-default impl<T> Attraction<T> for Layout<T>
-where
-	T: Coord + std::fmt::Debug,
-{
-	#[allow(clippy::collapsible_else_if)]
-	fn choose_attraction(settings: &Settings<T>) -> fn(&mut Layout<T>) {
-		if settings.prevent_overlapping.is_some() {
-			if settings.lin_log {
-				if settings.dissuade_hubs {
-					attraction::apply_attraction_dh_log_po
-				} else {
-					attraction::apply_attraction_log_po
-				}
-			} else {
-				if settings.dissuade_hubs {
-					attraction::apply_attraction_dh_po
-				} else {
-					attraction::apply_attraction_po
-				}
-			}
-		} else {
-			if settings.lin_log {
-				if settings.dissuade_hubs {
-					attraction::apply_attraction_dh_log
-				} else {
-					attraction::apply_attraction_log
-				}
-			} else {
-				if settings.dissuade_hubs {
-					attraction::apply_attraction_dh
-				} else {
-					attraction::apply_attraction
-				}
-			}
-		}
-	}
-}
-
 impl<T> Attraction<T> for Layout<T>
 where
-	T: Copy + Coord + std::fmt::Debug,
+	T: Coord + std::fmt::Debug,
 {
 	#[allow(clippy::collapsible_else_if)]
 	fn choose_attraction(settings: &Settings<T>) -> fn(&mut Layout<T>) {
@@ -210,6 +172,25 @@ impl Repulsion<f64> for Layout<f64> {
 
 impl Repulsion<f32> for Layout<f32> {
 	fn choose_repulsion(settings: &Settings<f32>) -> fn(&mut Layout<f32>) {
+		if settings.barnes_hut.is_some() {
+			return match settings.dimensions {
+				2 => {
+					if settings.prevent_overlapping.is_some() {
+						todo!()
+					} else {
+						repulsion::apply_repulsion_bh_2d
+					}
+				}
+				3 => {
+					if settings.prevent_overlapping.is_some() {
+						todo!()
+					} else {
+						todo!()
+					}
+				}
+				_ => unimplemented!("Barnes-Hut only implemented for 2D and 3D"),
+			};
+		}
 		if settings.prevent_overlapping.is_some() {
 			repulsion::apply_repulsion_po
 		} else {

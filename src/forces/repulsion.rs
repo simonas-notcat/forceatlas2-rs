@@ -1,4 +1,9 @@
-use crate::{iter::*, layout::*, util::*};
+use crate::{
+	iter::*,
+	layout::*,
+	trees::{Body2, Vec2},
+	util::*,
+};
 
 use itertools::izip;
 use num_traits::Zero;
@@ -11,7 +16,7 @@ use std::arch::x86_64::*;
 use std::ops::{AddAssign, SubAssign};
 
 pub fn apply_repulsion<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
-	let kr = layout.settings.kr.clone();
+	let kr = layout.settings.kr;
 	let mut di = valloc(layout.settings.dimensions);
 	for Node {
 		mass: n1_mass,
@@ -21,7 +26,7 @@ pub fn apply_repulsion<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 		..
 	} in layout.iter_nodes()
 	{
-		let n1_mass = n1_mass.clone() + T::one();
+		let n1_mass = *n1_mass + T::one();
 		for Node2 {
 			mass: n2_mass,
 			pos: n2_pos,
@@ -35,20 +40,20 @@ pub fn apply_repulsion<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 				.iter_mut()
 				.zip(n1_pos.iter())
 				.map(|(di, n1_pos)| {
-					*di -= n1_pos.clone();
-					di.clone().pow_n(2u32)
+					*di -= *n1_pos;
+					*di * *di
 				})
 				.sum::<T>();
 			if d2.is_zero() {
 				continue;
 			}
 
-			let f = n1_mass.clone() * (n2_mass.clone() + T::one()) / d2 * kr.clone();
+			let f = n1_mass * (*n2_mass + T::one()) / d2 * kr;
 
 			izip!(n1_speed.iter_mut(), n2_speed.iter_mut(), di.iter()).for_each(
 				|(n1_speed, n2_speed, di)| {
-					let s = f.clone() * di.clone();
-					*n1_speed -= s.clone();
+					let s = f * *di;
+					*n1_speed -= s;
 					*n2_speed += s;
 				},
 			);
@@ -58,14 +63,14 @@ pub fn apply_repulsion<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 
 #[cfg(feature = "parallel")]
 pub fn apply_repulsion_parallel<T: Coord + std::fmt::Debug + Send + Sync>(layout: &mut Layout<T>) {
-	let kr = layout.settings.kr.clone();
+	let kr = layout.settings.kr;
 	let dimensions = layout.settings.dimensions;
 
 	for chunk_iter in layout.iter_par_nodes(layout.settings.chunk_size.unwrap()) {
 		chunk_iter.for_each(|n1_iter| {
 			let mut di = valloc(dimensions);
 			for n1 in n1_iter {
-				let n1_mass = n1.mass.clone() + T::one();
+				let n1_mass = *n1.mass + T::one();
 				for n2 in n1.n2_iter {
 					di.clone_from_slice(n2.pos);
 
@@ -73,20 +78,20 @@ pub fn apply_repulsion_parallel<T: Coord + std::fmt::Debug + Send + Sync>(layout
 						.iter_mut()
 						.zip(n1.pos.iter())
 						.map(|(di, n1_pos)| {
-							*di -= n1_pos.clone();
-							di.clone().pow_n(2u32)
+							*di -= *n1_pos;
+							*di * *di
 						})
 						.sum::<T>();
 					if d2.is_zero() {
 						continue;
 					}
 
-					let f = n1_mass.clone() * (n2.mass.clone() + T::one()) / d2 * kr.clone();
+					let f = n1_mass * (*n2.mass + T::one()) / d2 * kr;
 
 					izip!(n1.speed.iter_mut(), n2.speed.iter_mut(), di.iter()).for_each(
 						|(n1_speed, n2_speed, di)| {
-							let s = f.clone() * di.clone();
-							*n1_speed -= s.clone();
+							let s = f * *di;
+							*n1_speed -= s;
 							*n2_speed += s;
 						},
 					);
@@ -96,7 +101,7 @@ pub fn apply_repulsion_parallel<T: Coord + std::fmt::Debug + Send + Sync>(layout
 	}
 }
 
-pub fn apply_repulsion_2d<T: Copy + Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
+pub fn apply_repulsion_2d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 	let kr = layout.settings.kr;
 	for Node {
 		mass: n1_mass,
@@ -135,7 +140,7 @@ pub fn apply_repulsion_2d<T: Copy + Coord + std::fmt::Debug>(layout: &mut Layout
 }
 
 #[cfg(feature = "parallel")]
-pub fn apply_repulsion_2d_parallel<T: Copy + Coord + std::fmt::Debug + Send + Sync>(
+pub fn apply_repulsion_2d_parallel<T: Coord + std::fmt::Debug + Send + Sync>(
 	layout: &mut Layout<T>,
 ) {
 	let kr = layout.settings.kr;
@@ -729,7 +734,7 @@ pub fn apply_repulsion_2d_simd_f32_parallel(layout: &mut Layout<f32>) {
 	}
 }
 
-pub fn apply_repulsion_3d<T: Copy + Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
+pub fn apply_repulsion_3d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 	for (n1, (n1_mass, n1_pos)) in layout.masses.iter().zip(layout.points.iter()).enumerate() {
 		let mut n2_iter = layout.points.iter();
 		let n1_mass = *n1_mass + T::one();
@@ -758,7 +763,7 @@ pub fn apply_repulsion_3d<T: Copy + Coord + std::fmt::Debug>(layout: &mut Layout
 }
 
 #[cfg(feature = "parallel")]
-pub fn apply_repulsion_3d_parallel<T: Copy + Coord + std::fmt::Debug + Send + Sync>(
+pub fn apply_repulsion_3d_parallel<T: Coord + std::fmt::Debug + Send + Sync>(
 	layout: &mut Layout<T>,
 ) {
 	let kr = layout.settings.kr;
@@ -919,13 +924,7 @@ pub fn apply_repulsion_3d_simd_f32_parallel(layout: &mut Layout<f32>) {
 
 pub fn apply_repulsion_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 	let mut di = valloc(layout.settings.dimensions);
-	let krprime = unsafe {
-		layout
-			.settings
-			.prevent_overlapping
-			.as_ref()
-			.unwrap_unchecked()
-	};
+	let krprime = unsafe { layout.settings.prevent_overlapping.unwrap_unchecked() };
 	let sizes = layout.sizes.as_ref().unwrap();
 	for (n1, ((n1_mass, n1_pos), n1_size)) in layout
 		.masses
@@ -935,7 +934,7 @@ pub fn apply_repulsion_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 		.enumerate()
 	{
 		let mut n2_iter = layout.points.iter();
-		let n1_mass = n1_mass.clone() + T::one();
+		let n1_mass = *n1_mass + T::one();
 		n2_iter.offset = (n1 + 1) * layout.settings.dimensions;
 		for ((n2, n2_pos), n2_size) in (0..n1).zip(&mut n2_iter).zip(sizes.iter()) {
 			di.clone_from_slice(n2_pos);
@@ -944,30 +943,29 @@ pub fn apply_repulsion_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 				.iter_mut()
 				.zip(n1_pos.iter())
 				.map(|(di, n1_pos)| {
-					*di -= n1_pos.clone();
-					di.clone().pow_n(2u32)
+					*di -= *n1_pos;
+					*di * *di
 				})
 				.sum::<T>();
 			if d2.is_zero() {
 				continue;
 			}
 
-			let d = d2.clone().sqrt();
-			let dprime = d.clone() - n1_size.clone() - n2_size.clone();
+			let d = d2.sqrt();
+			let dprime = d - *n1_size - *n2_size;
 
-			let f = n1_mass.clone()
-				* (unsafe { layout.masses.get_unchecked(n2) }.clone() + T::one())
-				/ d2 * if dprime.positive() {
-				layout.settings.kr.clone() / dprime
-			} else {
-				krprime.clone()
-			};
+			let f = n1_mass * (*unsafe { layout.masses.get_unchecked(n2) } + T::one()) / d2
+				* if dprime.positive() {
+					layout.settings.kr / dprime
+				} else {
+					krprime
+				};
 
 			let (n1_speed, n2_speed) = layout.speeds.get_2_mut(n1, n2);
 			izip!(n1_speed.iter_mut(), n2_speed.iter_mut(), di.iter()).for_each(
 				|(n1_speed, n2_speed, di)| {
-					let s = f.clone() * di.clone();
-					*n1_speed -= s.clone();
+					let s = f * *di;
+					*n1_speed -= s;
 					*n2_speed += s;
 				},
 			);
@@ -975,39 +973,74 @@ pub fn apply_repulsion_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 	}
 }
 
-#[cfg(feature = "barnes_hut")]
-pub fn apply_repulsion_bh_2d(layout: &mut Layout<f64>) {
-	let particles: Vec<nbody_barnes_hut::particle_2d::Particle2D> = layout
-		.points
-		.iter()
-		.zip(layout.masses.iter())
-		.map(|(point, mass)| nbody_barnes_hut::particle_2d::Particle2D {
-			position: nbody_barnes_hut::vector_2d::Vector2D {
-				x: point[0],
-				y: point[1],
-			},
-			mass: mass + 1.,
-		})
-		.collect();
-	let tree = nbody_barnes_hut::barnes_hut_2d::QuadTree::new(
-		&particles
-			.iter()
-			.collect::<Vec<&nbody_barnes_hut::particle_2d::Particle2D>>(),
-		layout.settings.barnes_hut.unwrap(),
-	);
-	let kr = layout.settings.kr;
+struct NodeBody2<T> {
+	pos: Vec2<T>,
+	mass: T,
+}
 
-	particles
-		.into_iter()
+impl<T> Body2<T> for NodeBody2<T>
+where
+	T: Coord,
+{
+	fn mass(&self) -> T {
+		self.mass
+	}
+
+	fn pos(&self) -> Vec2<T> {
+		self.pos
+	}
+
+	fn add_mass(&mut self, mass: T) {
+		self.mass += mass
+	}
+}
+
+#[cfg(feature = "barnes_hut")]
+pub fn apply_repulsion_bh_2d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
+	let mut points_iter = layout.points.iter();
+	let Some(point) = points_iter.next() else {
+		return;
+	};
+	let (mut min_x, mut min_y, mut max_x, mut max_y) = (point[0], point[1], point[0], point[1]);
+	for point in points_iter {
+		if point[0] < min_x {
+			min_x = point[0];
+		} else if point[0] > max_x {
+			max_x = point[0];
+		}
+		if point[1] < min_y {
+			min_y = point[1];
+		} else if point[1] > max_y {
+			max_y = point[1];
+		}
+	}
+	// println!("{:?} {:?} {:?} {:?}", min_x, min_y, max_x, max_y);
+
+	let mut tree = crate::trees::Node2::new((Vec2::new(min_x, min_y), Vec2::new(max_x, max_y)));
+	for node in layout.points.iter().zip(layout.masses.iter()) {
+		tree.add_body(NodeBody2 {
+			pos: Vec2::new(node.0[0], node.0[1]),
+			mass: *node.1 + T::one(),
+		});
+	}
+
+	let kr = layout.settings.kr;
+	let theta = layout.settings.barnes_hut.unwrap();
+
+	layout
+		.points
+		.iter_mut()
 		.zip(layout.speeds.iter_mut())
 		.zip(layout.masses.iter())
 		.for_each(|((particle, speed), mass)| {
-			let nbody_barnes_hut::vector_2d::Vector2D { x, y } =
-				tree.calc_forces_on_particle(particle.position, mass + 1., |d2, m1, dv, m2| {
-					m2 as f64 * m1 / d2.sqrt() * kr * dv
-				});
-			speed[0] -= x;
-			speed[1] -= y;
+			let f = tree.apply(
+				Vec2::new(particle[0], particle[1]),
+				theta,
+				(),
+				&|bb, b, mm, d, _| (bb - b) * mm / d,
+			) * kr * (*mass + T::one());
+			speed[0] -= f.x();
+			speed[1] -= f.y();
 		});
 }
 
