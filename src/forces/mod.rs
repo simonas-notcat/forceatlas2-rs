@@ -185,7 +185,7 @@ impl Repulsion<f32> for Layout<f32> {
 					if settings.prevent_overlapping.is_some() {
 						todo!()
 					} else {
-						todo!()
+						repulsion::apply_repulsion_bh_3d
 					}
 				}
 				_ => unimplemented!("Barnes-Hut only implemented for 2D and 3D"),

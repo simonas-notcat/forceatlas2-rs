@@ -1,7 +1,7 @@
 use crate::{
 	iter::*,
 	layout::*,
-	trees::{Body, Vec2},
+	trees::{Body, Vec2, Vec3, VecN},
 	util::*,
 };
 
@@ -973,12 +973,15 @@ pub fn apply_repulsion_po<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 	}
 }
 
-struct NodeBody2<T> {
-	pos: Vec2<T>,
+struct NodeBodyN<T, const N: usize> {
+	pos: VecN<T, N>,
 	mass: T,
 }
 
-impl<T> Body<T, 2> for NodeBody2<T>
+type NodeBody2<T> = NodeBodyN<T, 2>;
+type NodeBody3<T> = NodeBodyN<T, 3>;
+
+impl<T, const N: usize> Body<T, N> for NodeBodyN<T, N>
 where
 	T: Coord,
 {
@@ -986,7 +989,7 @@ where
 		self.mass
 	}
 
-	fn pos(&self) -> Vec2<T> {
+	fn pos(&self) -> VecN<T, N> {
 		self.pos
 	}
 
@@ -1101,41 +1104,68 @@ pub fn apply_repulsion_bh_2d_po(layout: &mut Layout<f64>) {
 }
 
 #[cfg(feature = "barnes_hut")]
-pub fn apply_repulsion_bh_3d(layout: &mut Layout<f64>) {
-	let particles: Vec<nbody_barnes_hut::particle_3d::Particle3D> = layout
-		.points
-		.iter()
-		.zip(layout.masses.iter())
-		.map(|(point, mass)| nbody_barnes_hut::particle_3d::Particle3D {
-			position: nbody_barnes_hut::vector_3d::Vector3D {
-				x: point[0],
-				y: point[1],
-				z: point[2],
-			},
-			mass: mass + 1.,
-		})
-		.collect();
-	let tree = nbody_barnes_hut::barnes_hut_3d::OctTree::new(
-		&particles
-			.iter()
-			.collect::<Vec<&nbody_barnes_hut::particle_3d::Particle3D>>(),
-		layout.settings.barnes_hut.unwrap(),
-	);
-	let kr = layout.settings.kr;
+pub fn apply_repulsion_bh_3d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
+	let mut points_iter = layout.points.iter();
+	let Some(point) = points_iter.next() else {
+		return;
+	};
+	let (mut min_x, mut min_y, mut min_z, mut max_x, mut max_y, mut max_z) =
+		(point[0], point[1], point[2], point[0], point[1], point[2]);
+	for point in points_iter {
+		if point[0] < min_x {
+			min_x = point[0];
+		} else if point[0] > max_x {
+			max_x = point[0];
+		}
+		if point[1] < min_y {
+			min_y = point[1];
+		} else if point[1] > max_y {
+			max_y = point[1];
+		}
+		if point[2] < min_z {
+			min_z = point[2];
+		} else if point[2] > max_z {
+			max_z = point[2];
+		}
+	}
 
-	particles
-		.into_iter()
+	let mut tree =
+			crate::trees::Tree::<crate::trees::Node3<T, NodeBody3<T>>, T, NodeBody3<T>, 3>::with_capacity(
+				layout.masses.len(),
+			);
+	let mut root = tree.new_root((
+		Vec3::new(min_x, min_y, min_z),
+		Vec3::new(max_x, max_y, max_z),
+	));
+
+	for node in layout.points.iter().zip(layout.masses.iter()) {
+		root.add_body(NodeBody3 {
+			pos: Vec3::new(node.0[0], node.0[1], node.0[2]),
+			mass: *node.1 + T::one(),
+		});
+	}
+
+	let kr = layout.settings.kr;
+	let theta = layout.settings.barnes_hut.unwrap();
+
+	layout
+		.points
+		.iter_mut()
 		.zip(layout.speeds.iter_mut())
 		.zip(layout.masses.iter())
 		.for_each(|((particle, speed), mass)| {
-			let nbody_barnes_hut::vector_3d::Vector3D { x, y, z } =
-				tree.calc_forces_on_particle(particle.position, mass + 1., |d2, m1, dv, m2| {
-					m2 * m1 / d2.sqrt() * kr * dv
-				});
-			speed[0] -= x;
-			speed[1] -= y;
-			speed[2] -= z;
+			let f = root.apply(
+				Vec3::new(particle[0], particle[1], particle[2]),
+				theta,
+				(),
+				&|bb, b, mm, d, _| (bb - b) * mm / d,
+			) * kr * (*mass + T::one());
+			speed[0] -= f.x();
+			speed[1] -= f.y();
+			speed[2] -= f.z();
 		});
+	std::mem::drop(root);
+	tree.clear();
 }
 
 #[cfg(feature = "barnes_hut")]

@@ -45,6 +45,53 @@ where
 	}
 }
 
+impl<T, const N: usize> std::ops::Sub<VecN<T, N>> for VecN<T, N>
+where
+	T: Num + Copy,
+{
+	type Output = Self;
+	fn sub(mut self, rhs: Self) -> Self::Output {
+		self.0
+			.iter_mut()
+			.zip(rhs.0.iter())
+			.for_each(|(a, b)| *a = *a - *b);
+		self
+	}
+}
+
+impl<T, const N: usize> std::ops::Mul<T> for VecN<T, N>
+where
+	T: Num + Copy,
+{
+	type Output = Self;
+	fn mul(mut self, rhs: T) -> Self::Output {
+		self.0.iter_mut().for_each(|a| *a = *a * rhs);
+		self
+	}
+}
+
+impl<T, const N: usize> std::ops::Div<T> for VecN<T, N>
+where
+	T: Num + Copy,
+{
+	type Output = Self;
+	fn div(mut self, rhs: T) -> Self::Output {
+		self.0.iter_mut().for_each(|a| *a = *a / rhs);
+		self
+	}
+}
+
+impl<T, const N: usize> std::ops::Neg for VecN<T, N>
+where
+	T: std::ops::Neg<Output = T> + Copy,
+{
+	type Output = Self;
+	fn neg(mut self) -> Self::Output {
+		self.0.iter_mut().for_each(|a| *a = -*a);
+		self
+	}
+}
+
 impl<T, const N: usize> Zero for VecN<T, N>
 where
 	T: Copy + Num,
@@ -59,36 +106,7 @@ where
 }
 
 pub type Vec2<T> = VecN<T, 2>;
-
-impl<T> std::ops::Sub<Vec2<T>> for Vec2<T>
-where
-	T: Num + Copy,
-{
-	type Output = Self;
-	fn sub(self, rhs: Self) -> Self {
-		Self([self.0[0] - rhs.0[0], self.0[1] - rhs.0[1]])
-	}
-}
-
-impl<T> std::ops::Mul<T> for Vec2<T>
-where
-	T: Num + Copy,
-{
-	type Output = Self;
-	fn mul(self, rhs: T) -> Self {
-		Self([self.0[0] * rhs, self.0[1] * rhs])
-	}
-}
-
-impl<T> std::ops::Div<T> for Vec2<T>
-where
-	T: Num + Copy,
-{
-	type Output = Self;
-	fn div(self, rhs: T) -> Self {
-		Self([self.0[0] / rhs, self.0[1] / rhs])
-	}
-}
+pub type Vec3<T> = VecN<T, 3>;
 
 impl<T> Vec2<T> {
 	pub fn new(x: T, y: T) -> Self {
@@ -107,6 +125,33 @@ impl<T> Vec2<T> {
 		T: Clone,
 	{
 		self.0[1].clone()
+	}
+}
+
+impl<T> Vec3<T> {
+	pub fn new(x: T, y: T, z: T) -> Self {
+		Self([x, y, z])
+	}
+
+	pub fn x(&self) -> T
+	where
+		T: Clone,
+	{
+		self.0[0].clone()
+	}
+
+	pub fn y(&self) -> T
+	where
+		T: Clone,
+	{
+		self.0[1].clone()
+	}
+
+	pub fn z(&self) -> T
+	where
+		T: Clone,
+	{
+		self.0[2].clone()
 	}
 }
 
@@ -178,19 +223,22 @@ pub trait Node<T, L, const N: usize> {
 	) -> VecN<T, N>;
 }
 
-pub enum Node2<T, L> {
+pub enum NodeN<T, L, const N: usize, const NP: usize> {
 	Branch {
-		nodes: Box<[Node2<T, L>; 4]>,
-		center: Vec2<T>,
+		nodes: Box<[NodeN<T, L, N, NP>; NP]>,
+		center: VecN<T, N>,
 		mass: T,
-		center_of_mass: Vec2<T>,
+		center_of_mass: VecN<T, N>,
 		width: T,
 	},
 	Leaf {
 		body: Option<L>,
-		pos: (Vec2<T>, Vec2<T>),
+		pos: (VecN<T, N>, VecN<T, N>),
 	},
 }
+
+pub type Node2<T, L> = NodeN<T, L, 2, 4>;
+pub type Node3<T, L> = NodeN<T, L, 3, 8>;
 
 impl<T, L: Body<T, 2>> Node<T, L, 2> for Node2<T, L>
 where
@@ -300,6 +348,168 @@ where
 				}
 			}
 			Node2::Leaf { body, .. } => {
+				if let Some(body) = body {
+					if on == body.pos() {
+						return Zero::zero();
+					}
+					let dist = on.distance(body.pos());
+					f(body.pos(), on, body.mass(), dist, custom)
+				} else {
+					Zero::zero()
+				}
+			}
+		}
+	}
+}
+
+impl<T, L: Body<T, 3>> Node<T, L, 3> for Node3<T, L>
+where
+	T: Real,
+{
+	fn new(pos: (Vec3<T>, Vec3<T>)) -> Self {
+		Node3::Leaf { body: None, pos }
+	}
+	fn add_body(&mut self, new_body: L) {
+		match self {
+			Node3::Branch {
+				nodes,
+				center,
+				mass,
+				center_of_mass,
+				..
+			} => {
+				let new_body_pos = new_body.pos();
+				let new_body_mass = new_body.mass();
+
+				*center_of_mass = (*center_of_mass * *mass + new_body_pos * new_body_mass)
+					/ (*mass + new_body_mass);
+				*mass = *mass + new_body_mass;
+				nodes[match (
+					new_body_pos.x() < center.x(),
+					new_body_pos.y() < center.y(),
+					new_body_pos.z() < center.z(),
+				) {
+					(true, true, true) => 0,
+					(false, true, true) => 1,
+					(true, false, true) => 2,
+					(false, false, true) => 3,
+					(true, true, false) => 4,
+					(false, true, false) => 5,
+					(true, false, false) => 6,
+					(false, false, false) => 7,
+				}]
+				.add_body(new_body)
+			}
+			Node3::Leaf { body, pos } => {
+				if let Some(mut body) = body.take() {
+					if body.pos().distance_squared(new_body.pos()) < T::one() {
+						body.add_mass(new_body.mass());
+						*self = Node3::Leaf {
+							body: Some(body),
+							pos: *pos,
+						};
+						return;
+					}
+					let center = (pos.0 + pos.1) / (T::one() + T::one());
+					*self = Node3::Branch {
+						nodes: Box::new([
+							Node3::Leaf {
+								body: None,
+								pos: (pos.0, center),
+							},
+							Node3::Leaf {
+								body: None,
+								pos: (
+									Vec3::new(center.x(), pos.0.y(), pos.0.z()),
+									Vec3::new(pos.1.x(), center.y(), center.z()),
+								),
+							},
+							Node3::Leaf {
+								body: None,
+								pos: (
+									Vec3::new(pos.0.x(), center.y(), pos.0.z()),
+									Vec3::new(center.x(), pos.1.y(), center.z()),
+								),
+							},
+							Node3::Leaf {
+								body: None,
+								pos: (
+									Vec3::new(center.x(), center.y(), pos.0.z()),
+									Vec3::new(pos.1.x(), pos.1.y(), center.z()),
+								),
+							},
+							Node3::Leaf {
+								body: None,
+								pos: (
+									Vec3::new(pos.0.x(), pos.0.y(), center.z()),
+									Vec3::new(center.x(), center.y(), pos.1.z()),
+								),
+							},
+							Node3::Leaf {
+								body: None,
+								pos: (
+									Vec3::new(center.x(), pos.0.y(), center.z()),
+									Vec3::new(pos.1.x(), center.y(), pos.1.z()),
+								),
+							},
+							Node3::Leaf {
+								body: None,
+								pos: (
+									Vec3::new(pos.0.x(), center.y(), center.z()),
+									Vec3::new(center.x(), pos.1.y(), pos.1.z()),
+								),
+							},
+							Node3::Leaf {
+								body: None,
+								pos: (center, pos.1),
+							},
+						]),
+						center,
+						mass: T::zero(),
+						center_of_mass: center,
+						width: pos.1.x() - pos.0.x(),
+					};
+					self.add_body(body);
+					self.add_body(new_body)
+				} else {
+					*body = Some(new_body);
+				}
+			}
+		}
+	}
+	fn apply<C: Clone, F: Fn(Vec3<T>, Vec3<T>, T, T, C) -> Vec3<T>>(
+		&self,
+		on: Vec3<T>,
+		theta: T,
+		custom: C,
+		f: &F,
+	) -> Vec3<T> {
+		match self {
+			Node3::Branch {
+				nodes,
+				mass,
+				center_of_mass,
+				width,
+				..
+			} => {
+				if on == *center_of_mass {
+					return Zero::zero();
+				}
+				let dist = on.distance(*center_of_mass);
+				if *width / dist < theta {
+					f(*center_of_mass, on, *mass, dist, custom)
+				} else {
+					nodes[0].apply::<C, F>(on, theta, custom.clone(), f)
+						+ nodes[1].apply::<C, F>(on, theta, custom.clone(), f)
+						+ nodes[2].apply::<C, F>(on, theta, custom.clone(), f)
+						+ nodes[3].apply::<C, F>(on, theta, custom.clone(), f)
+						+ nodes[4].apply::<C, F>(on, theta, custom.clone(), f)
+						+ nodes[5].apply::<C, F>(on, theta, custom.clone(), f)
+						+ nodes[6].apply::<C, F>(on, theta, custom.clone(), f)
+						+ nodes[7].apply::<C, F>(on, theta, custom.clone(), f)
+				}
+			}
+			Node3::Leaf { body, .. } => {
 				if let Some(body) = body {
 					if on == body.pos() {
 						return Zero::zero();
