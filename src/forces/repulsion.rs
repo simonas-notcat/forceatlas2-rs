@@ -1054,56 +1054,6 @@ pub fn apply_repulsion_bh_2d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>)
 }
 
 #[cfg(feature = "barnes_hut")]
-pub fn apply_repulsion_bh_2d_po(layout: &mut Layout<f64>) {
-	let particles: Vec<nbody_barnes_hut::particle_2d::Particle2D> = layout
-		.points
-		.iter()
-		.zip(layout.masses.iter())
-		.map(|(point, mass)| nbody_barnes_hut::particle_2d::Particle2D {
-			position: nbody_barnes_hut::vector_2d::Vector2D {
-				x: point[0],
-				y: point[1],
-			},
-			mass: mass + 1.,
-		})
-		.collect();
-	let tree = nbody_barnes_hut::barnes_hut_2d::QuadTree::new(
-		&particles
-			.iter()
-			.collect::<Vec<&nbody_barnes_hut::particle_2d::Particle2D>>(),
-		layout.settings.barnes_hut.unwrap(),
-	);
-	let kr = layout.settings.kr;
-	let krprime = unsafe { layout.settings.prevent_overlapping.unwrap_unchecked() };
-	let sizes = layout.sizes.as_ref().unwrap();
-
-	particles
-		.into_iter()
-		.zip(layout.speeds.iter_mut())
-		.zip(layout.masses.iter())
-		.zip(sizes.iter())
-		.for_each(|(((particle, speed), mass), size)| {
-			let nbody_barnes_hut::vector_2d::Vector2D { x, y } = tree.calc_forces_on_particle(
-				particle.position,
-				(mass + 1., size),
-				|d2, m1, dv, (m2, size2)| {
-					let d = d2.sqrt();
-					let dprime = d - size - size2;
-					(if dprime.positive() {
-						kr / dprime
-					} else if dprime.is_zero() {
-						return nbody_barnes_hut::vector_2d::Vector2D { x: 0.0, y: 0.0 };
-					} else {
-						krprime
-					}) * m1 * m2 / d * dv
-				},
-			);
-			speed[0] -= x;
-			speed[1] -= y;
-		});
-}
-
-#[cfg(feature = "barnes_hut")]
 pub fn apply_repulsion_bh_3d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
 	let mut points_iter = layout.points.iter();
 	let Some(point) = points_iter.next() else {
@@ -1166,60 +1116,4 @@ pub fn apply_repulsion_bh_3d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>)
 		});
 	std::mem::drop(root);
 	tree.clear();
-}
-
-#[cfg(feature = "barnes_hut")]
-pub fn apply_repulsion_bh_3d_po(layout: &mut Layout<f64>) {
-	let particles: Vec<nbody_barnes_hut::particle_3d::Particle3D> = layout
-		.points
-		.iter()
-		.zip(layout.masses.iter())
-		.map(|(point, mass)| nbody_barnes_hut::particle_3d::Particle3D {
-			position: nbody_barnes_hut::vector_3d::Vector3D {
-				x: point[0],
-				y: point[1],
-				z: point[2],
-			},
-			mass: mass + 1.,
-		})
-		.collect();
-	let tree = nbody_barnes_hut::barnes_hut_3d::OctTree::new(
-		&particles
-			.iter()
-			.collect::<Vec<&nbody_barnes_hut::particle_3d::Particle3D>>(),
-		layout.settings.barnes_hut.unwrap(),
-	);
-	let kr = layout.settings.kr;
-	let krprime = unsafe { layout.settings.prevent_overlapping.unwrap_unchecked() };
-	let sizes = layout.sizes.as_ref().unwrap();
-
-	particles
-		.into_iter()
-		.zip(layout.speeds.iter_mut())
-		.zip(layout.masses.iter())
-		.zip(sizes.iter())
-		.for_each(|(((particle, speed), mass), size)| {
-			let nbody_barnes_hut::vector_3d::Vector3D { x, y, z } = tree.calc_forces_on_particle(
-				particle.position,
-				(mass + 1., size),
-				|d2, m1, dv, (m2, size2)| {
-					let d = d2.sqrt();
-					let dprime = d - size - size2;
-					(if dprime.positive() {
-						kr / dprime
-					} else if dprime.is_zero() {
-						return nbody_barnes_hut::vector_3d::Vector3D {
-							x: 0.0,
-							y: 0.0,
-							z: 0.0,
-						};
-					} else {
-						krprime
-					}) * m1 * m2 / d * dv
-				},
-			);
-			speed[0] -= x;
-			speed[1] -= y;
-			speed[2] -= z;
-		});
 }

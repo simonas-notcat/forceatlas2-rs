@@ -176,7 +176,7 @@ impl<'a, T, L, D: Node<T, L, N>, const N: usize> Tree<'a, D, T, L, N> {
 	{
 		Root {
 			node: bumpalo::boxed::Box::new_in(D::new(pos), &self.bump),
-			p: Default::default(),
+			phantom: Default::default(),
 		}
 	}
 
@@ -185,12 +185,12 @@ impl<'a, T, L, D: Node<T, L, N>, const N: usize> Tree<'a, D, T, L, N> {
 	}
 }
 
-pub struct Root<'a, D, T: 'a, L: 'a, const N: usize> {
-	node: bumpalo::boxed::Box<'a, D>,
-	p: std::marker::PhantomData<(T, [L; N])>,
+pub struct Root<'r, D, T, L, const N: usize> {
+	node: bumpalo::boxed::Box<'r, D>,
+	phantom: std::marker::PhantomData<(T, [L; N])>,
 }
 
-impl<'a, D: Node<T, L, N>, T: 'a, L: 'a, const N: usize> Root<'a, D, T, L, N> {
+impl<'r, D: Node<T, L, N>, T, L, const N: usize> Root<'r, D, T, L, N> {
 	pub fn add_body(&mut self, new_body: L) {
 		BorrowMut::<D>::borrow_mut(&mut self.node).add_body(new_body)
 	}

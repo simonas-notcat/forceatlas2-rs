@@ -77,7 +77,23 @@ where
 	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T>) {
 		#[cfg(feature = "barnes_hut")]
 		if settings.barnes_hut.is_some() {
-			unimplemented!("Barnes-Hut only implemented for f64")
+			return match settings.dimensions {
+				2 => {
+					if settings.prevent_overlapping.is_some() {
+						todo!()
+					} else {
+						repulsion::apply_repulsion_bh_2d
+					}
+				}
+				3 => {
+					if settings.prevent_overlapping.is_some() {
+						todo!()
+					} else {
+						repulsion::apply_repulsion_bh_3d
+					}
+				}
+				_ => unimplemented!("Barnes-Hut only implemented for 2D and 3D"),
+			};
 		}
 		if settings.prevent_overlapping.is_some() {
 			repulsion::apply_repulsion_po
@@ -94,7 +110,23 @@ where
 	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T>) {
 		#[cfg(feature = "barnes_hut")]
 		if settings.barnes_hut.is_some() {
-			unimplemented!("Barnes-Hut only implemented for f64")
+			return match settings.dimensions {
+				2 => {
+					if settings.prevent_overlapping.is_some() {
+						todo!()
+					} else {
+						repulsion::apply_repulsion_bh_2d
+					}
+				}
+				3 => {
+					if settings.prevent_overlapping.is_some() {
+						todo!()
+					} else {
+						repulsion::apply_repulsion_bh_3d
+					}
+				}
+				_ => unimplemented!("Barnes-Hut only implemented for 2D and 3D"),
+			};
 		}
 		if settings.prevent_overlapping.is_some() {
 			repulsion::apply_repulsion_po
@@ -115,14 +147,14 @@ impl Repulsion<f64> for Layout<f64> {
 			return match settings.dimensions {
 				2 => {
 					if settings.prevent_overlapping.is_some() {
-						repulsion::apply_repulsion_bh_2d_po
+						todo!()
 					} else {
 						repulsion::apply_repulsion_bh_2d
 					}
 				}
 				3 => {
 					if settings.prevent_overlapping.is_some() {
-						repulsion::apply_repulsion_bh_3d_po
+						todo!()
 					} else {
 						repulsion::apply_repulsion_bh_3d
 					}
