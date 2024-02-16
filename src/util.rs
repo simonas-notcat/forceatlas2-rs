@@ -259,7 +259,7 @@ pub(crate) struct SendPtr<T>(pub std::ptr::NonNull<T>);
 impl<T> Copy for SendPtr<T> {}
 impl<T> Clone for SendPtr<T> {
 	fn clone(&self) -> Self {
-		SendPtr(self.0)
+		*self
 	}
 }
 

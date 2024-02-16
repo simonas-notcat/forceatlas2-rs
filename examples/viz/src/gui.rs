@@ -4,7 +4,7 @@ use forceatlas2::*;
 use gio::prelude::*;
 use gtk::{
 	prelude::*,
-	traits::{EntryExt, SettingsExt},
+	traits::{EntryExt, GtkSettingsExt},
 };
 use parking_lot::RwLock;
 use rand::Rng;
@@ -100,7 +100,7 @@ fn build_ui(
 			kr_input.set_text(&settings.kr.to_string());
 			speed_input.set_text(&settings.speed.to_string());
 			barneshut_input.set_active(settings.barnes_hut.is_some());
-			barneshut_theta_input.set_text(&settings.barnes_hut.unwrap_or(1.0).to_string());
+			barneshut_theta_input.set_text(&settings.barnes_hut.unwrap_or(0.5).to_string());
 		}
 		draw_edges_input.set_active(draw_settings.draw_edges);
 		edge_color_input.set_rgba({
@@ -220,24 +220,24 @@ fn build_ui(
 					}
 					"Right" => {
 						graph_adj.0.set_value(graph_adj.0.value() + 16.0);
-						return Inhibit(true);
+						return glib::signal::Propagation::Stop;
 					}
 					"Left" => {
 						graph_adj.0.set_value(graph_adj.0.value() - 16.0);
-						return Inhibit(true);
+						return glib::signal::Propagation::Stop;
 					}
 					"Down" => {
 						graph_adj.1.set_value(graph_adj.1.value() + 16.0);
-						return Inhibit(true);
+						return glib::signal::Propagation::Stop;
 					}
 					"Up" => {
 						graph_adj.1.set_value(graph_adj.1.value() - 16.0);
-						return Inhibit(true);
+						return glib::signal::Propagation::Stop;
 					}
 					_ => {}
 				}
 			}
-			Inhibit(false)
+			glib::signal::Propagation::Proceed
 		}
 	});
 
@@ -616,7 +616,7 @@ fn build_ui(
 				}
 				MsgToGtk::Resize => resize_handler(),
 			}
-			glib::Continue(true)
+			glib::ControlFlow::Continue
 		});
 	}
 
@@ -634,7 +634,7 @@ pub fn run(
 		Default::default(),
 	);
 
-	let (tx, rx) = glib::MainContext::sync_channel(glib::PRIORITY_DEFAULT, 4);
+	let (tx, rx) = glib::MainContext::sync_channel(glib::source::Priority::DEFAULT, 4);
 	let rx = Arc::new(RwLock::new(Some(rx)));
 	let msg_from_gtk = Arc::new(RwLock::new(MsgFromGtk {
 		redraw: true,

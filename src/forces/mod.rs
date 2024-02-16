@@ -70,39 +70,6 @@ pub fn choose_gravity<T: Coord + std::fmt::Debug>(settings: &Settings<T>) -> fn(
 	}
 }
 
-default impl<T> Repulsion<T> for Layout<T>
-where
-	T: Coord + std::fmt::Debug,
-{
-	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T>) {
-		#[cfg(feature = "barnes_hut")]
-		if settings.barnes_hut.is_some() {
-			return match settings.dimensions {
-				2 => {
-					if settings.prevent_overlapping.is_some() {
-						todo!()
-					} else {
-						repulsion::apply_repulsion_bh_2d
-					}
-				}
-				3 => {
-					if settings.prevent_overlapping.is_some() {
-						todo!()
-					} else {
-						repulsion::apply_repulsion_bh_3d
-					}
-				}
-				_ => unimplemented!("Barnes-Hut only implemented for 2D and 3D"),
-			};
-		}
-		if settings.prevent_overlapping.is_some() {
-			repulsion::apply_repulsion_po
-		} else {
-			repulsion::apply_repulsion
-		}
-	}
-}
-
 default impl<T: Send + Sync> Repulsion<T> for Layout<T>
 where
 	T: Coord + std::fmt::Debug,

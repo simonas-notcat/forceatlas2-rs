@@ -215,6 +215,7 @@ pub fn draw_graph(
 			max[1] = pos[1];
 		}
 	}
+	println!("{:?} {:?}", min, max);
 	let graph_size = (max[0] - min[0], max[1] - min[1]);
 	let factor = {
 		let factors = (size.0 as T / graph_size.0, size.1 as T / graph_size.1);

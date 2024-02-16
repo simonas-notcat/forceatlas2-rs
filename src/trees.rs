@@ -19,7 +19,7 @@ impl<T, const N: usize> VecN<T, N> {
 	{
 		self.0
 			.into_iter()
-			.zip(rhs.0.into_iter())
+			.zip(rhs.0)
 			.fold(T::zero(), |s, (a, b)| s + (a - b) * (a - b))
 	}
 

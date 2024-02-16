@@ -999,7 +999,7 @@ where
 }
 
 #[cfg(feature = "barnes_hut")]
-pub fn apply_repulsion_bh_2d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
+pub fn apply_repulsion_bh_2d<T: Coord + Send + Sync>(layout: &mut Layout<T>) {
 	let mut points_iter = layout.points.iter();
 	let Some(point) = points_iter.next() else {
 		return;
@@ -1018,6 +1018,7 @@ pub fn apply_repulsion_bh_2d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>)
 		}
 	}
 
+	// TODO allocate only once for the layout
 	let mut tree =
 			crate::trees::Tree::<crate::trees::Node2<T, NodeBody2<T>>, T, NodeBody2<T>, 2>::with_capacity(
 				layout.masses.len(),
@@ -1036,9 +1037,10 @@ pub fn apply_repulsion_bh_2d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>)
 
 	layout
 		.points
-		.iter_mut()
-		.zip(layout.speeds.iter_mut())
-		.zip(layout.masses.iter())
+		.points
+		.par_chunks_exact(2)
+		.zip(layout.speeds.points.par_chunks_exact_mut(2))
+		.zip(layout.masses.par_iter())
 		.for_each(|((particle, speed), mass)| {
 			let f = root.apply(
 				Vec2::new(particle[0], particle[1]),
@@ -1054,7 +1056,7 @@ pub fn apply_repulsion_bh_2d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>)
 }
 
 #[cfg(feature = "barnes_hut")]
-pub fn apply_repulsion_bh_3d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>) {
+pub fn apply_repulsion_bh_3d<T: Coord + Send + Sync>(layout: &mut Layout<T>) {
 	let mut points_iter = layout.points.iter();
 	let Some(point) = points_iter.next() else {
 		return;
@@ -1100,9 +1102,10 @@ pub fn apply_repulsion_bh_3d<T: Coord + std::fmt::Debug>(layout: &mut Layout<T>)
 
 	layout
 		.points
-		.iter_mut()
-		.zip(layout.speeds.iter_mut())
-		.zip(layout.masses.iter())
+		.points
+		.par_chunks_exact(3)
+		.zip(layout.speeds.points.par_chunks_exact_mut(3))
+		.zip(layout.masses.par_iter())
 		.for_each(|((particle, speed), mass)| {
 			let f = root.apply(
 				Vec3::new(particle[0], particle[1], particle[2]),
