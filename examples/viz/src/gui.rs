@@ -261,8 +261,10 @@ fn build_ui(
 		move |_| {
 			let mut rng = rand::thread_rng();
 			let mut layout = layout.write();
-			layout.old_speeds.fill(0.0);
-			layout.points.fill_with(|| rng.gen_range(-1.0..1.0));
+			layout.old_speeds.fill([0.0; 2]);
+			layout
+				.points
+				.fill_with(|| [rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0)]);
 			tx.write().redraw = true;
 			*nb_iters.write() = 0;
 		}
@@ -413,14 +415,14 @@ fn build_ui(
 		let layout = layout.clone();
 		let settings = settings.clone();
 		move |entry| {
-			if let Ok(theta) = barneshut_input.text().parse() {
-				barneshut_input.set_secondary_icon_name(None);
+			if let Ok(theta) = entry.text().parse() {
+				entry.set_secondary_icon_name(None);
 				let mut settings = settings.write();
-				settings.barnes_hut = Some(theta);
+				settings.barnes_hut = theta;
 				let mut layout = layout.write();
 				layout.set_settings(settings.clone());
 			} else {
-				barneshut_input.set_secondary_icon_name(Some("emblem-unreadable"));
+				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
 		}
 	});
@@ -530,7 +532,8 @@ fn build_ui(
 		}
 	});
 
-	d3_input.connect_toggled({
+	// TODO
+	/*d3_input.connect_toggled({
 		let tx = tx.clone();
 		let nb_iters = nb_iters.clone();
 		move |d3_input| {
@@ -551,6 +554,7 @@ fn build_ui(
 			drop(layout);
 		}
 	});
+	*/
 
 	let resize_handler = {
 		let pixbuf = pixbuf.clone();
@@ -654,13 +658,13 @@ pub fn run(
 			if let Some(pixbuf) = pixbuf.write().as_ref() {
 				let layout = layout.read();
 				if *d3.read() {
-					crate::drawer::draw_graph_3d(
-						layout,
-						(pixbuf.0.width(), pixbuf.0.height()),
-						unsafe { pixbuf.0.pixels() },
-						pixbuf.0.rowstride(),
-						draw_settings.read().clone(),
-					);
+					// crate::drawer::draw_graph_3d(
+					// 	layout,
+					// 	(pixbuf.0.width(), pixbuf.0.height()),
+					// 	unsafe { pixbuf.0.pixels() },
+					// 	pixbuf.0.rowstride(),
+					// 	draw_settings.read().clone(),
+					// );
 				} else {
 					crate::drawer::draw_graph(
 						layout,
@@ -690,13 +694,13 @@ pub fn run(
 				if let Some(pixbuf) = pixbuf.write().as_ref() {
 					let layout = layout.read();
 					if *d3.read() {
-						crate::drawer::draw_graph_3d(
-							layout,
-							(pixbuf.0.width(), pixbuf.0.height()),
-							unsafe { pixbuf.0.pixels() },
-							pixbuf.0.rowstride(),
-							draw_settings.read().clone(),
-						);
+						// crate::drawer::draw_graph_3d(
+						// 	layout,
+						// 	(pixbuf.0.width(), pixbuf.0.height()),
+						// 	unsafe { pixbuf.0.pixels() },
+						// 	pixbuf.0.rowstride(),
+						// 	draw_settings.read().clone(),
+						// );
 					} else {
 						crate::drawer::draw_graph(
 							layout,

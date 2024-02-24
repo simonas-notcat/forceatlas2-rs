@@ -176,7 +176,7 @@ pub fn draw_disk(
 }
 
 pub fn draw_graph(
-	layout: parking_lot::RwLockReadGuard<Layout<T>>,
+	layout: parking_lot::RwLockReadGuard<Layout<T, 2>>,
 	size: (i32, i32),
 	pixels: &mut [u8],
 	rowstride: i32,
@@ -190,18 +190,15 @@ pub fn draw_graph(
 		..
 	}: DrawSettings,
 ) {
-	assert_eq!(layout.points.dimensions, 2);
-
 	pixels
 		.iter_mut()
 		.zip(IntoIterator::into_iter([bg_color.0, bg_color.1, bg_color.2]).cycle())
 		.for_each(|(px, bg)| *px = bg);
 
-	let mut min_v = layout.points.get_clone(0);
-	let mut max_v = min_v.clone();
-	let min = min_v.as_mut_slice();
-	let max = max_v.as_mut_slice();
-	for pos in layout.points.iter() {
+	let mut iter = layout.points.iter();
+	let mut min = *iter.next().unwrap();
+	let mut max = min;
+	for pos in iter {
 		if pos[0] < min[0] {
 			min[0] = pos[0];
 		}
@@ -236,7 +233,7 @@ pub fn draw_graph(
 				rowstride,
 				edge_color,
 				{
-					let pos = layout.points.get(*h1);
+					let pos = layout.points[*h1];
 					unsafe {
 						(
 							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
@@ -245,7 +242,7 @@ pub fn draw_graph(
 					}
 				},
 				{
-					let pos = layout.points.get(*h2);
+					let pos = layout.points[*h2];
 					unsafe {
 						(
 							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
@@ -279,7 +276,7 @@ pub fn draw_graph(
 }
 
 pub fn draw_graph_3d(
-	layout: parking_lot::RwLockReadGuard<Layout<T>>,
+	layout: parking_lot::RwLockReadGuard<Layout<T, 3>>,
 	size: (i32, i32),
 	pixels: &mut [u8],
 	rowstride: i32,
@@ -291,8 +288,6 @@ pub fn draw_graph_3d(
 		..
 	}: DrawSettings,
 ) {
-	assert_eq!(layout.points.dimensions, 3);
-
 	pixels
 		.iter_mut()
 		.zip(IntoIterator::into_iter([bg_color.0, bg_color.1, bg_color.2]).cycle())
@@ -329,8 +324,8 @@ pub fn draw_graph_3d(
 
 	if draw_edges {
 		for (h1, h2) in layout.edges.iter() {
-			let p1 = layout.points.get(*h1);
-			let p2 = layout.points.get(*h2);
+			let p1 = layout.points[*h1];
+			let p2 = layout.points[*h2];
 			let proj = camera.world_to_pixel(&cam_geom::Points::new(unsafe {
 				Matrix2x3::new(
 					*p1.get_unchecked(0) as f32,

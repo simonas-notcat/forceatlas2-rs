@@ -68,7 +68,7 @@ pub fn choose_gravity<T: Coord + std::fmt::Debug, const N: usize>(
 	}
 }
 
-default impl<T: Send + Sync> Repulsion<T, 2> for Layout<T, 2>
+impl<T: Send + Sync> Repulsion<T, 2> for Layout<T, 2>
 where
 	T: Coord + std::fmt::Debug,
 {
@@ -81,7 +81,7 @@ where
 	}
 }
 
-default impl<T: Send + Sync> Repulsion<T, 3> for Layout<T, 3>
+impl<T: Send + Sync> Repulsion<T, 3> for Layout<T, 3>
 where
 	T: Coord + std::fmt::Debug,
 {
