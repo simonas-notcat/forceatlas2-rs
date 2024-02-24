@@ -1,5 +1,4 @@
 use forceatlas2::*;
-use itertools::izip;
 use plotters::prelude::*;
 use sdl2;
 use sdl2::{
@@ -115,10 +114,8 @@ fn main() {
 	println!("Nodes: {}", nodes);
 
 	let mut settings = Settings {
-		#[cfg(feature = "barnes_hut")]
-		barnes_hut: None,
+		barnes_hut: 0.5,
 		chunk_size: None,
-		dimensions: 2,
 		dissuade_hubs: false,
 		ka: 0.01,
 		kg: 0.001,
@@ -129,7 +126,7 @@ fn main() {
 		strong_gravity: false,
 	};
 
-	let layout = Arc::new(RwLock::new(Layout::<T>::from_graph(
+	let layout = Arc::new(RwLock::new(Layout::<T, 2>::from_graph(
 		edges.clone(),
 		Nodes::Degree(nodes),
 		None,
@@ -359,11 +356,12 @@ fn draw_graph(
 			}
 		});
 
-	for (pos, speed, old_speed) in izip!(
-		layout.points.iter(),
-		layout.speeds.iter(),
-		layout.old_speeds.iter()
-	) {
+	for ((pos, speed), old_speed) in layout
+		.points
+		.iter()
+		.zip(layout.speeds.iter())
+		.zip(layout.old_speeds.iter())
+	{
 		let swinging = (speed[0] - old_speed[0]).powi(2) + (speed[1] - old_speed[1]).powi(2);
 		let traction = (speed[0] + old_speed[0]).powi(2) + (speed[1] + old_speed[1]).powi(2);
 

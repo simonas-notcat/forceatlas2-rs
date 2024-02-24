@@ -1,9 +1,9 @@
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
-use maths_traits::analysis::ordered::Signed;
 use num_traits::{
 	cast::{FromPrimitive, NumCast},
 	real::Real,
+	sign::Signed,
 };
 #[cfg(feature = "rand")]
 use rand::Rng;

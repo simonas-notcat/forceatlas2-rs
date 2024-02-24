@@ -83,7 +83,7 @@ pub fn apply_attraction_po<T: Coord, const N: usize>(layout: &mut Layout<T, N>) 
 		}
 		d = d.sqrt();
 		let dprime = d - sizes[*n1] - sizes[*n2];
-		if dprime.non_positive() {
+		if !dprime.is_positive() {
 			continue;
 		}
 		let f = dprime / d * layout.settings.ka;
@@ -95,9 +95,7 @@ pub fn apply_attraction_po<T: Coord, const N: usize>(layout: &mut Layout<T, N>) 
 	}
 }
 
-pub fn apply_attraction_dh_po<T: Coord + std::fmt::Debug, const N: usize>(
-	layout: &mut Layout<T, N>,
-) {
+pub fn apply_attraction_dh_po<T: Coord, const N: usize>(layout: &mut Layout<T, N>) {
 	let sizes = layout.sizes.as_ref().unwrap();
 	for (n1, n2) in layout.edges.iter() {
 		let (n1_pos, n2_pos) = get_2_mut(&mut layout.points, *n1, *n2);
@@ -109,7 +107,7 @@ pub fn apply_attraction_dh_po<T: Coord + std::fmt::Debug, const N: usize>(
 		}
 		d = d.sqrt();
 		let dprime = d - sizes[*n1] - sizes[*n2];
-		if dprime.non_positive() {
+		if !dprime.is_positive() {
 			continue;
 		}
 		let n1_mass = layout.masses[*n1];
@@ -122,9 +120,7 @@ pub fn apply_attraction_dh_po<T: Coord + std::fmt::Debug, const N: usize>(
 	}
 }
 
-pub fn apply_attraction_log_po<T: Coord + std::fmt::Debug, const N: usize>(
-	layout: &mut Layout<T, N>,
-) {
+pub fn apply_attraction_log_po<T: Coord, const N: usize>(layout: &mut Layout<T, N>) {
 	let sizes = layout.sizes.as_ref().unwrap();
 	for (n1, n2) in layout.edges.iter() {
 		let (n1_pos, n2_pos) = get_2_mut(&mut layout.points, *n1, *n2);
@@ -136,7 +132,7 @@ pub fn apply_attraction_log_po<T: Coord + std::fmt::Debug, const N: usize>(
 		}
 		d = d.sqrt();
 		let dprime = d - sizes[*n1] - sizes[*n2];
-		if dprime.non_positive() {
+		if !dprime.is_positive() {
 			continue;
 		}
 		// TODO check formula
@@ -149,9 +145,7 @@ pub fn apply_attraction_log_po<T: Coord + std::fmt::Debug, const N: usize>(
 	}
 }
 
-pub fn apply_attraction_dh_log_po<T: Coord + std::fmt::Debug, const N: usize>(
-	layout: &mut Layout<T, N>,
-) {
+pub fn apply_attraction_dh_log_po<T: Coord, const N: usize>(layout: &mut Layout<T, N>) {
 	let sizes = layout.sizes.as_ref().unwrap();
 	for (n1, n2) in layout.edges.iter() {
 		let (n1_pos, n2_pos) = get_2_mut(&mut layout.points, *n1, *n2);
@@ -163,7 +157,7 @@ pub fn apply_attraction_dh_log_po<T: Coord + std::fmt::Debug, const N: usize>(
 		}
 		d = d.sqrt();
 		let dprime = d - sizes[*n1] - sizes[*n2];
-		if dprime.non_positive() {
+		if !dprime.is_positive() {
 			continue;
 		}
 		// TODO check formula

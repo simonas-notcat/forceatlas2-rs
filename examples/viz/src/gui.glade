@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.38.2 -->
+<!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
   <object class="GtkListStore" id="liststore1">
@@ -472,48 +472,20 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkBox">
+                  <object class="GtkEntry" id="barneshut_theta">
                     <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <child>
-                      <object class="GtkCheckButton" id="barneshut">
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="margin-end">2</property>
-                        <property name="active">True</property>
-                        <property name="draw-indicator">True</property>
-                        <child internal-child="accessible">
-                          <object class="AtkObject" id="barneshut-atkobject">
-                            <property name="AtkObject::accessible-name" translatable="yes">Barnes-Hut</property>
-                          </object>
-                        </child>
+                    <property name="can-focus">True</property>
+                    <property name="tooltip-text" translatable="yes">Node radius</property>
+                    <property name="max-length">20</property>
+                    <property name="text" translatable="yes">0.5</property>
+                    <property name="input-purpose">number</property>
+                    <accessibility>
+                      <relation type="labelled-by" target="barneshut_label"/>
+                    </accessibility>
+                    <child internal-child="accessible">
+                      <object class="AtkObject" id="barneshut_theta-atkobject">
+                        <property name="AtkObject::accessible-name" translatable="yes">Theta parameter for Barnes-Hut optimization</property>
                       </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkEntry" id="barneshut_theta">
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="tooltip-text" translatable="yes">Node radius</property>
-                        <property name="max-length">20</property>
-                        <property name="text" translatable="yes">0.5</property>
-                        <property name="input-purpose">number</property>
-                        <child internal-child="accessible">
-                          <object class="AtkObject" id="barneshut_theta-atkobject">
-                            <property name="AtkObject::accessible-name" translatable="yes">Theta parameter for Barnes-Hut optimization</property>
-                          </object>
-                        </child>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">2</property>
-                      </packing>
                     </child>
                   </object>
                   <packing>

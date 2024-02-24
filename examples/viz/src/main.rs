@@ -50,9 +50,8 @@ fn main() {
 	println!("Nodes: {}", nodes);
 
 	let settings = Settings {
-		barnes_hut: None,
+		barnes_hut: 0.5,
 		chunk_size: Some(256),
-		dimensions: 2,
 		dissuade_hubs: false,
 		ka: 1.0,
 		kg: 1.0,
@@ -63,7 +62,7 @@ fn main() {
 		strong_gravity: false,
 	};
 
-	let layout = Arc::new(RwLock::new(Layout::<T>::from_graph(
+	let layout = Arc::new(RwLock::new(Layout::<T, 2>::from_graph(
 		edges,
 		Nodes::Degree(nodes),
 		None,
