@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 cam-geom = "0.14.1"
-forceatlas2 = { path = "../..", features = ["barnes_hut"] }
+forceatlas2 = { path = "../..", features = [] }
 gio = "0.18.4"
 glib = "0.18.5"
 gdk = "0.18.0"

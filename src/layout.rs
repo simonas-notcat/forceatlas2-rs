@@ -1,7 +1,4 @@
-use crate::{iter::*, util::*};
-
-use rayon::prelude::*;
-use std::marker::PhantomData;
+use crate::util::*;
 
 #[derive(Clone)]
 pub struct Settings<T: Coord> {
@@ -9,8 +6,7 @@ pub struct Settings<T: Coord> {
 	/// The argument is theta.
 	///
 	/// **Note**: only implemented for `T=f64` and `dimension` 2 or 3.
-	#[cfg(feature = "barnes_hut")]
-	pub barnes_hut: Option<T>,
+	pub barnes_hut: T,
 	/// Number of nodes computed by each thread
 	///
 	/// Only used in repulsion computation. Set to `None` to turn off parallelization.
@@ -20,8 +16,6 @@ pub struct Settings<T: Coord> {
 	/// Requires `T: Send + Sync`
 	#[cfg(feature = "parallel")]
 	pub chunk_size: Option<usize>,
-	/// Number of spatial dimensions
-	pub dimensions: usize,
 	/// Move hubs (high degree nodes) to the center
 	pub dissuade_hubs: bool,
 	/// Attraction coefficient
@@ -47,11 +41,9 @@ pub struct Settings<T: Coord> {
 impl<T: Coord> Default for Settings<T> {
 	fn default() -> Self {
 		Self {
-			#[cfg(feature = "barnes_hut")]
-			barnes_hut: None,
+			barnes_hut: T::one() / (T::one() + T::one()),
 			#[cfg(feature = "parallel")]
 			chunk_size: Some(256),
-			dimensions: 2,
 			dissuade_hubs: false,
 			ka: T::one(),
 			kg: T::one(),
@@ -64,15 +56,15 @@ impl<T: Coord> Default for Settings<T> {
 	}
 }
 
-pub struct Layout<T: Coord> {
+pub struct Layout<T: Coord, const N: usize> {
 	pub edges: Vec<Edge>,
 	pub masses: Vec<T>,
 	pub sizes: Option<Vec<T>>,
 	/// List of the nodes' positions
-	pub points: PointList<T>,
+	pub points: Vec<[T; N]>,
 	pub(crate) settings: Settings<T>,
-	pub speeds: PointList<T>,
-	pub old_speeds: PointList<T>,
+	pub speeds: Vec<[T; N]>,
+	pub old_speeds: Vec<[T; N]>,
 	pub weights: Option<Vec<T>>,
 
 	pub(crate) fn_attraction: fn(&mut Self),
@@ -80,7 +72,7 @@ pub struct Layout<T: Coord> {
 	pub(crate) fn_repulsion: fn(&mut Self),
 }
 
-impl<T: Coord> Layout<T> {
+/*impl<T: Coord> Layout<T> {
 	pub fn iter_nodes(&mut self) -> NodeIter<T> {
 		NodeIter {
 			ind: 0,
@@ -155,7 +147,7 @@ impl<T: Coord + Send> Layout<T> {
 				})
 		})
 	}
-}
+}*/
 
 #[cfg(test)]
 mod test {
@@ -168,7 +160,7 @@ mod test {
 	#[test]
 	fn test_iter_nodes() {
 		for n_nodes in 1usize..16 {
-			let mut layout = Layout::<f32>::from_graph(
+			let mut layout = Layout::<f32, 2>::from_graph(
 				vec![],
 				Nodes::Degree(n_nodes),
 				None,
@@ -194,7 +186,7 @@ mod test {
 	#[cfg(feature = "parallel")]
 	fn test_iter_par_nodes() {
 		for n_nodes in 1usize..16 {
-			let mut layout = Layout::<f32>::from_graph(
+			let mut layout = Layout::<f32, 2>::from_graph(
 				vec![],
 				Nodes::Mass((1..n_nodes + 1).map(|i| i as f32).collect()),
 				None,
@@ -243,7 +235,7 @@ mod test {
 
 		for n_nodes in 1usize..32 {
 			println!("######## {} nodes", n_nodes);
-			let mut layout = Layout::<f32>::from_graph(
+			let mut layout = Layout::<f32, 2>::from_graph(
 				vec![],
 				Nodes::Mass((1..n_nodes + 1).map(|i| i as f32).collect()),
 				None,

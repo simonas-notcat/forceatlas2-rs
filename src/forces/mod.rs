@@ -8,21 +8,21 @@ use crate::{
 };
 
 #[doc(hidden)]
-pub trait Attraction<T: Coord + std::fmt::Debug> {
-	fn choose_attraction(settings: &Settings<T>) -> fn(&mut Layout<T>);
+pub trait Attraction<T: Coord + std::fmt::Debug, const N: usize> {
+	fn choose_attraction(settings: &Settings<T>) -> fn(&mut Layout<T, N>);
 }
 
 #[doc(hidden)]
-pub trait Repulsion<T: Coord + std::fmt::Debug> {
-	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T>);
+pub trait Repulsion<T: Coord + std::fmt::Debug, const N: usize> {
+	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T, N>);
 }
 
-impl<T> Attraction<T> for Layout<T>
+impl<T, const N: usize> Attraction<T, N> for Layout<T, N>
 where
 	T: Coord + std::fmt::Debug,
 {
 	#[allow(clippy::collapsible_else_if)]
-	fn choose_attraction(settings: &Settings<T>) -> fn(&mut Layout<T>) {
+	fn choose_attraction(settings: &Settings<T>) -> fn(&mut Layout<T, N>) {
 		if settings.prevent_overlapping.is_some() {
 			if settings.lin_log {
 				if settings.dissuade_hubs {
@@ -48,18 +48,16 @@ where
 				if settings.dissuade_hubs {
 					attraction::apply_attraction_dh
 				} else {
-					match settings.dimensions {
-						2 => attraction::apply_attraction_2d,
-						3 => attraction::apply_attraction_3d,
-						_ => attraction::apply_attraction,
-					}
+					attraction::apply_attraction
 				}
 			}
 		}
 	}
 }
 
-pub fn choose_gravity<T: Coord + std::fmt::Debug>(settings: &Settings<T>) -> fn(&mut Layout<T>) {
+pub fn choose_gravity<T: Coord + std::fmt::Debug, const N: usize>(
+	settings: &Settings<T>,
+) -> fn(&mut Layout<T, N>) {
 	if settings.kg.is_zero() {
 		return |_| {};
 	}
@@ -70,172 +68,28 @@ pub fn choose_gravity<T: Coord + std::fmt::Debug>(settings: &Settings<T>) -> fn(
 	}
 }
 
-default impl<T: Send + Sync> Repulsion<T> for Layout<T>
+default impl<T: Send + Sync> Repulsion<T, 2> for Layout<T, 2>
 where
 	T: Coord + std::fmt::Debug,
 {
-	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T>) {
-		#[cfg(feature = "barnes_hut")]
-		if settings.barnes_hut.is_some() {
-			return match settings.dimensions {
-				2 => {
-					if settings.prevent_overlapping.is_some() {
-						todo!()
-					} else {
-						repulsion::apply_repulsion_bh_2d
-					}
-				}
-				3 => {
-					if settings.prevent_overlapping.is_some() {
-						todo!()
-					} else {
-						repulsion::apply_repulsion_bh_3d
-					}
-				}
-				_ => unimplemented!("Barnes-Hut only implemented for 2D and 3D"),
-			};
-		}
+	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T, 2>) {
 		if settings.prevent_overlapping.is_some() {
-			repulsion::apply_repulsion_po
+			todo!()
 		} else {
-			#[cfg(feature = "parallel")]
-			if settings.chunk_size.is_some() {
-				return repulsion::apply_repulsion_parallel;
-			}
-			repulsion::apply_repulsion
+			repulsion::apply_repulsion_2d
 		}
 	}
 }
 
-impl Repulsion<f64> for Layout<f64> {
-	fn choose_repulsion(settings: &Settings<f64>) -> fn(&mut Layout<f64>) {
-		#[cfg(feature = "barnes_hut")]
-		if settings.barnes_hut.is_some() {
-			return match settings.dimensions {
-				2 => {
-					if settings.prevent_overlapping.is_some() {
-						todo!()
-					} else {
-						repulsion::apply_repulsion_bh_2d
-					}
-				}
-				3 => {
-					if settings.prevent_overlapping.is_some() {
-						todo!()
-					} else {
-						repulsion::apply_repulsion_bh_3d
-					}
-				}
-				_ => unimplemented!("Barnes-Hut only implemented for 2D and 3D"),
-			};
-		}
+default impl<T: Send + Sync> Repulsion<T, 3> for Layout<T, 3>
+where
+	T: Coord + std::fmt::Debug,
+{
+	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T, 3>) {
 		if settings.prevent_overlapping.is_some() {
-			repulsion::apply_repulsion_po
+			todo!()
 		} else {
-			match settings.dimensions {
-				2 => {
-					#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-					{
-						if is_x86_feature_detected!("avx2") {
-							#[cfg(feature = "parallel")]
-							if settings.chunk_size.is_some() {
-								return repulsion::apply_repulsion_2d_simd_f64_parallel;
-							}
-							return repulsion::apply_repulsion_2d_simd_f64;
-						}
-					}
-					#[cfg(feature = "parallel")]
-					if settings.chunk_size.is_some() {
-						return repulsion::apply_repulsion_2d_parallel;
-					}
-					repulsion::apply_repulsion_2d
-				}
-				3 => {
-					#[cfg(feature = "parallel")]
-					if settings.chunk_size.is_some() {
-						return repulsion::apply_repulsion_3d_parallel;
-					}
-					repulsion::apply_repulsion_3d
-				}
-				_ => {
-					#[cfg(feature = "parallel")]
-					if settings.chunk_size.is_some() {
-						return repulsion::apply_repulsion_parallel;
-					}
-					repulsion::apply_repulsion
-				}
-			}
-		}
-	}
-}
-
-impl Repulsion<f32> for Layout<f32> {
-	fn choose_repulsion(settings: &Settings<f32>) -> fn(&mut Layout<f32>) {
-		if settings.barnes_hut.is_some() {
-			return match settings.dimensions {
-				2 => {
-					if settings.prevent_overlapping.is_some() {
-						todo!()
-					} else {
-						repulsion::apply_repulsion_bh_2d
-					}
-				}
-				3 => {
-					if settings.prevent_overlapping.is_some() {
-						todo!()
-					} else {
-						repulsion::apply_repulsion_bh_3d
-					}
-				}
-				_ => unimplemented!("Barnes-Hut only implemented for 2D and 3D"),
-			};
-		}
-		if settings.prevent_overlapping.is_some() {
-			repulsion::apply_repulsion_po
-		} else {
-			match settings.dimensions {
-				2 => {
-					#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-					{
-						if is_x86_feature_detected!("avx2") {
-							#[cfg(feature = "parallel")]
-							if settings.chunk_size.is_some() {
-								return repulsion::apply_repulsion_2d_simd_f32_parallel;
-							}
-							return repulsion::apply_repulsion_2d_simd_f32;
-						}
-					}
-					#[cfg(feature = "parallel")]
-					if settings.chunk_size.is_some() {
-						return repulsion::apply_repulsion_2d_parallel;
-					}
-					repulsion::apply_repulsion_2d
-				}
-				3 => {
-					#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-					{
-						if is_x86_feature_detected!("avx2") {
-							#[cfg(feature = "parallel")]
-							if settings.chunk_size.is_some() {
-								return repulsion::apply_repulsion_3d_simd_f32_parallel;
-							}
-							//return repulsion::apply_repulsion_3d_simd_f32;
-						}
-					}
-					#[cfg(feature = "parallel")]
-					if settings.chunk_size.is_some() {
-						return repulsion::apply_repulsion_3d_parallel;
-					}
-					repulsion::apply_repulsion_3d
-				}
-				_ => {
-					#[cfg(feature = "parallel")]
-					if settings.chunk_size.is_some() {
-						return repulsion::apply_repulsion_parallel;
-					}
-					repulsion::apply_repulsion
-				}
-			}
+			repulsion::apply_repulsion_3d
 		}
 	}
 }

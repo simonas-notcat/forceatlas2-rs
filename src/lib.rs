@@ -4,7 +4,6 @@
 #![allow(incomplete_features)]
 
 mod forces;
-mod iter;
 mod layout;
 mod trees;
 mod util;
@@ -12,37 +11,27 @@ mod util;
 use forces::{Attraction, Repulsion};
 
 pub use layout::{Layout, Settings};
-pub use util::{Coord, Edge, Nodes, PointIter, PointIterMut, PointList, Position};
+pub use util::{Coord, Edge, Nodes};
 
-use itertools::izip;
 use num_traits::cast::NumCast;
 
-impl<'a, T: Coord + std::fmt::Debug> Layout<T>
+impl<'a, T: Coord + std::fmt::Debug, const N: usize> Layout<T, N>
 where
-	Layout<T>: forces::Repulsion<T> + forces::Attraction<T>,
+	Layout<T, N>: forces::Repulsion<T, N> + forces::Attraction<T, N>,
 {
 	/// Instantiates an empty layout
 	pub fn empty(weighted: bool, settings: Settings<T>) -> Self {
 		Self {
 			edges: Vec::new(),
-			points: PointList {
-				dimensions: settings.dimensions,
-				points: Vec::new(),
-			},
+			points: Vec::new(),
 			masses: Vec::new(),
 			sizes: if settings.prevent_overlapping.is_some() {
 				Some(Vec::new())
 			} else {
 				None
 			},
-			speeds: PointList {
-				dimensions: settings.dimensions,
-				points: Vec::new(),
-			},
-			old_speeds: PointList {
-				dimensions: settings.dimensions,
-				points: Vec::new(),
-			},
+			speeds: Vec::new(),
+			old_speeds: Vec::new(),
 			weights: if weighted { Some(Vec::new()) } else { None },
 			fn_attraction: Self::choose_attraction(&settings),
 			fn_gravity: forces::choose_gravity(&settings),
@@ -91,28 +80,19 @@ where
 			assert!(settings.prevent_overlapping.is_none());
 		}
 
-		let nb = nodes.len() * settings.dimensions;
+		let nb = nodes.len() * N;
 		Self {
 			edges,
-			points: PointList {
-				dimensions: settings.dimensions,
-				points: {
-					let mut rng = rand::thread_rng();
-					(0..nodes.len())
-						.flat_map(|_| util::sample_unit_ncube(&mut rng, settings.dimensions))
-						.collect()
-				},
+			points: {
+				let mut rng = rand::thread_rng();
+				(0..nodes.len())
+					.map(|_| util::sample_unit_ncube(&mut rng))
+					.collect()
 			},
 			masses: nodes,
 			sizes,
-			speeds: PointList {
-				dimensions: settings.dimensions,
-				points: (0..nb).map(|_| T::zero()).collect(),
-			},
-			old_speeds: PointList {
-				dimensions: settings.dimensions,
-				points: (0..nb).map(|_| T::zero()).collect(),
-			},
+			speeds: (0..nb).map(|_| [T::zero(); N]).collect(),
+			old_speeds: (0..nb).map(|_| [T::zero(); N]).collect(),
 			weights,
 			fn_attraction: Self::choose_attraction(&settings),
 			fn_gravity: forces::choose_gravity(&settings),
@@ -130,7 +110,7 @@ where
 		edges: Vec<Edge>,
 		nodes: Nodes<T>,
 		sizes: Option<Vec<T>>,
-		positions: Vec<T>,
+		positions: Vec<[T; N]>,
 		weights: Option<Vec<T>>,
 		settings: Settings<T>,
 	) -> Self
@@ -162,24 +142,14 @@ where
 			assert!(settings.prevent_overlapping.is_none());
 		}
 
-		let nb = nodes.len() * settings.dimensions;
-		assert_eq!(positions.len(), nb);
+		assert_eq!(positions.len(), nodes.len());
 		Self {
 			edges,
-			masses: nodes,
 			sizes,
-			points: PointList {
-				dimensions: settings.dimensions,
-				points: positions,
-			},
-			speeds: PointList {
-				dimensions: settings.dimensions,
-				points: (0..nb).map(|_| T::zero()).collect(),
-			},
-			old_speeds: PointList {
-				dimensions: settings.dimensions,
-				points: (0..nb).map(|_| T::zero()).collect(),
-			},
+			points: positions,
+			speeds: (0..nodes.len()).map(|_| [T::zero(); N]).collect(),
+			old_speeds: (0..nodes.len()).map(|_| [T::zero(); N]).collect(),
+			masses: nodes,
 			weights,
 			fn_attraction: Self::choose_attraction(&settings),
 			fn_gravity: forces::choose_gravity(&settings),
@@ -197,7 +167,7 @@ where
 		&mut self,
 		edges: &[Edge],
 		nodes: Nodes<T>,
-		positions: &[T],
+		positions: &[[T; N]],
 		weights: Option<&[T]>,
 	) {
 		let new_nodes;
@@ -215,14 +185,12 @@ where
 				self.masses.extend_from_slice(&masses);
 			}
 		}
-		assert_eq!(positions.len(), new_nodes * self.settings.dimensions);
-		self.points.points.extend_from_slice(positions);
+		assert_eq!(positions.len(), new_nodes);
+		self.points.extend_from_slice(positions);
 		self.speeds
-			.points
-			.extend((0..positions.len()).map(|_| T::zero()));
+			.extend((0..positions.len()).map(|_| [T::zero(); N]));
 		self.old_speeds
-			.points
-			.extend((0..positions.len()).map(|_| T::zero()));
+			.extend((0..positions.len()).map(|_| [T::zero(); N]));
 		self.edges.extend_from_slice(edges);
 		match (weights, &mut self.weights) {
 			(Some(new_weights), Some(weights)) => {
@@ -276,11 +244,7 @@ where
 	}
 
 	/// Changes layout settings
-	///
-	/// # Panics
-	/// Panics if `settings.dimensions` is changed.
 	pub fn set_settings(&mut self, settings: Settings<T>) {
-		assert_eq!(self.settings.dimensions, settings.dimensions);
 		self.fn_attraction = Self::choose_attraction(&settings);
 		self.fn_gravity = forces::choose_gravity(&settings);
 		self.fn_repulsion = Self::choose_repulsion(&settings);
@@ -297,14 +261,9 @@ where
 	}
 
 	fn init_iteration(&mut self) {
-		for (speed, old_speed) in self
-			.speeds
-			.points
-			.iter_mut()
-			.zip(self.old_speeds.points.iter_mut())
-		{
+		for (speed, old_speed) in self.speeds.iter_mut().zip(self.old_speeds.iter_mut()) {
 			*old_speed = *speed;
-			*speed = T::zero();
+			*speed = [T::zero(); N];
 		}
 	}
 
@@ -321,11 +280,12 @@ where
 	}
 
 	fn apply_forces(&mut self) {
-		for (pos, speed, old_speed) in izip!(
-			self.points.iter_mut(),
-			self.speeds.iter_mut(),
-			self.old_speeds.iter()
-		) {
+		for ((pos, speed), old_speed) in self
+			.points
+			.iter_mut()
+			.zip(self.speeds.iter_mut())
+			.zip(self.old_speeds.iter())
+		{
 			let swinging = speed
 				.iter()
 				.zip(old_speed.iter())
@@ -362,7 +322,7 @@ mod tests {
 	#[cfg(feature = "rand")]
 	#[test]
 	fn test_global() {
-		let mut layout = Layout::<f64>::from_graph(
+		let mut layout = Layout::<f64, 2>::from_graph(
 			vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 4)],
 			Nodes::Degree(5),
 			None,
@@ -379,7 +339,7 @@ mod tests {
 
 	#[test]
 	fn test_init_iteration() {
-		let mut layout = Layout::<f64>::from_position_graph(
+		let mut layout = Layout::<f64, 2>::from_position_graph(
 			vec![(0, 1)],
 			Nodes::Degree(2),
 			None,
@@ -399,7 +359,7 @@ mod tests {
 
 	#[test]
 	fn test_forces() {
-		let mut layout = Layout::<f64>::from_position_graph(
+		let mut layout = Layout::<f64, 2>::from_position_graph(
 			vec![(0, 1)],
 			Nodes::Degree(2),
 			None,
@@ -454,10 +414,9 @@ mod tests {
 		assert_eq!(speed_2[1], -4.0 / 5.0.sqrt());
 	}
 
-	#[cfg(feature = "barnes_hut")]
 	#[test]
 	fn test_barnes_hut_2d() {
-		let mut layout = Layout::<f64>::from_position_graph(
+		let mut layout = Layout::<f64, 2>::from_position_graph(
 			vec![(0, 1)],
 			Nodes::Degree(2),
 			None,
@@ -481,7 +440,7 @@ mod tests {
 
 	#[test]
 	fn test_convergence() {
-		let mut layout = Layout::<f64>::from_position_graph(
+		let mut layout = Layout::<f64, 2>::from_position_graph(
 			vec![(0, 1), (1, 2)],
 			Nodes::Degree(3),
 			None,
@@ -490,7 +449,6 @@ mod tests {
 			Settings {
 				#[cfg(feature = "parallel")]
 				chunk_size: None,
-				dimensions: 2,
 				dissuade_hubs: false,
 				ka: 0.5,
 				kg: 0.01,
@@ -499,8 +457,7 @@ mod tests {
 				prevent_overlapping: None,
 				speed: 1.0,
 				strong_gravity: false,
-				#[cfg(feature = "barnes_hut")]
-				barnes_hut: None,
+				barnes_hut: 0.5,
 			},
 		);
 
@@ -527,7 +484,7 @@ mod tests {
 
 	#[test]
 	fn test_convergence_po() {
-		let mut layout = Layout::<f64>::from_position_graph(
+		let mut layout = Layout::<f64, 2>::from_position_graph(
 			vec![(0, 1), (1, 2)],
 			Nodes::Degree(3),
 			Some(vec![1.0, 5.0, 1.0]),
@@ -536,7 +493,6 @@ mod tests {
 			Settings {
 				#[cfg(feature = "parallel")]
 				chunk_size: None,
-				dimensions: 2,
 				dissuade_hubs: false,
 				ka: 0.5,
 				kg: 0.01,
@@ -545,8 +501,7 @@ mod tests {
 				prevent_overlapping: Some(100.),
 				speed: 1.0,
 				strong_gravity: false,
-				#[cfg(feature = "barnes_hut")]
-				barnes_hut: None,
+				barnes_hut: 0.5,
 			},
 		);
 
@@ -573,7 +528,7 @@ mod tests {
 
 	#[test]
 	fn check_alloc() {
-		let mut layout = Layout::<f64>::from_graph(
+		let mut layout = Layout::<f64, 2>::from_graph(
 			vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 4), (3, 4)],
 			Nodes::Degree(5),
 			None,
