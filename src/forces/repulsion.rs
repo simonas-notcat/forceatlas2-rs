@@ -7,7 +7,7 @@ use crate::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-struct NodeBodyN<T, const N: usize> {
+pub(crate) struct NodeBodyN<T, const N: usize> {
 	pos: VecN<T, N>,
 	mass: T,
 }
@@ -51,11 +51,11 @@ pub fn apply_repulsion_2d<T: Coord + Send + Sync>(layout: &mut Layout<T, 2>) {
 		}
 	}
 
-	// TODO allocate only once for the layout
+	let mut bump = layout.bump.lock();
 	let mut tree =
-			crate::trees::Tree::<crate::trees::Node2<T, NodeBody2<T>>, T, NodeBody2<T>, 2>::with_capacity(
-				layout.masses.len(),
-			);
+		crate::trees::Tree::<crate::trees::Node2<T, NodeBody2<T>>, T, NodeBody2<T>, 2>::from_bump(
+			&mut bump,
+		);
 	let mut root = tree.new_root((Vec2::new(min_x, min_y), Vec2::new(max_x, max_y)));
 
 	for node in layout.points.iter().zip(layout.masses.iter()) {
@@ -112,10 +112,11 @@ pub fn apply_repulsion_3d<T: Coord + Send + Sync>(layout: &mut Layout<T, 3>) {
 		}
 	}
 
+	let mut bump = layout.bump.lock();
 	let mut tree =
-			crate::trees::Tree::<crate::trees::Node3<T, NodeBody3<T>>, T, NodeBody3<T>, 3>::with_capacity(
-				layout.masses.len(),
-			);
+		crate::trees::Tree::<crate::trees::Node3<T, NodeBody3<T>>, T, NodeBody3<T>, 3>::from_bump(
+			&mut bump,
+		);
 	let mut root = tree.new_root((
 		Vec3::new(min_x, min_y, min_z),
 		Vec3::new(max_x, max_y, max_z),

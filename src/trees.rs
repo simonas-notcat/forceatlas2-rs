@@ -156,14 +156,13 @@ impl<T> Vec3<T> {
 }
 
 pub struct Tree<'a, D, T: 'a, L: 'a, const N: usize> {
-	bump: bumpalo::Bump,
+	bump: &'a mut bumpalo::Bump,
 	phantom: std::marker::PhantomData<([T; N], L, &'a D)>,
 }
 
 impl<'a, T, L, D: Node<T, L, N>, const N: usize> Tree<'a, D, T, L, N> {
-	/// Create an empty tree with preallocated space for a given number of nodes
-	pub fn with_capacity(capacity: usize) -> Self {
-		let bump = bumpalo::Bump::with_capacity(std::mem::size_of::<D>() * capacity);
+	/// Create an empty tree
+	pub fn from_bump(bump: &'a mut bumpalo::Bump) -> Self {
 		Tree {
 			bump,
 			phantom: Default::default(),
@@ -175,7 +174,7 @@ impl<'a, T, L, D: Node<T, L, N>, const N: usize> Tree<'a, D, T, L, N> {
 		'a: 'r,
 	{
 		Root {
-			node: bumpalo::boxed::Box::new_in(D::new(pos), &self.bump),
+			node: bumpalo::boxed::Box::new_in(D::new(pos), self.bump),
 			phantom: Default::default(),
 		}
 	}

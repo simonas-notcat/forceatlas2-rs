@@ -115,7 +115,6 @@ fn main() {
 
 	let mut settings = Settings {
 		barnes_hut: 0.5,
-		chunk_size: None,
 		dissuade_hubs: false,
 		ka: 0.01,
 		kg: 0.001,
@@ -201,7 +200,6 @@ fn main() {
 				println!("q          quit");
 				println!("r          reset");
 				println!("s          start/stop");
-				println!("cs [usize] chunk size (leave empty to disable parallel)");
 				println!("ka <f64>   attraction");
 				println!("kg <f64>   gravity");
 				println!("kr <f64>   repulsion");
@@ -210,10 +208,6 @@ fn main() {
 			Some("s") => {
 				let mut computing = computing.write().unwrap();
 				*computing = !*computing;
-			}
-			Some("cs") => {
-				settings.chunk_size = args.next().map(|chunk_size| chunk_size.parse().unwrap());
-				layout.write().unwrap().set_settings(settings.clone());
 			}
 			Some("ka") => {
 				settings.ka = args.next().unwrap().parse().unwrap();
@@ -239,10 +233,7 @@ fn main() {
 					settings.clone(),
 				);
 			}
-			Some("p") => println!(
-				"ka={}  kg={}  kr={}  cs={:?}",
-				settings.ka, settings.kg, settings.kr, settings.chunk_size
-			),
+			Some("p") => println!("ka={}  kg={}  kr={}", settings.ka, settings.kg, settings.kr),
 			Some("dl") => {
 				let mut draw_links = draw_links.write().unwrap();
 				*draw_links = !*draw_links;
@@ -256,7 +247,7 @@ fn main() {
 }
 
 fn draw_graph(
-	layout: Arc<RwLock<Layout<T>>>,
+	layout: Arc<RwLock<Layout<T, 2>>>,
 	image: Arc<RwLock<(u32, u32, Vec<u8>)>>,
 	size: Arc<RwLock<(u32, u32)>>,
 	draw_links: Arc<RwLock<bool>>,
@@ -276,7 +267,7 @@ fn draw_graph(
 
 	let layout = layout.read().unwrap();
 
-	let mut min_v = layout.points.get_clone(0);
+	let mut min_v = layout.points[0];
 	let mut max_v = min_v.clone();
 	let min = min_v.as_mut_slice();
 	let max = max_v.as_mut_slice();
@@ -314,7 +305,7 @@ fn draw_graph(
 				root.draw(&PathElement::new(
 					vec![
 						{
-							let pos = layout.points.get(*h1);
+							let pos = layout.points[*h1];
 							unsafe {
 								(
 									((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
@@ -323,7 +314,7 @@ fn draw_graph(
 							}
 						},
 						{
-							let pos = layout.points.get(*h2);
+							let pos = layout.points[*h2];
 							unsafe {
 								(
 									((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),

@@ -24,16 +24,13 @@ fn main() {
 			}
 		})
 		.collect();
-	let mut layout = Layout::<T>::from_graph(
+	let mut layout = Layout::<T, 2>::from_graph(
 		edges,
 		Nodes::Degree(NODES),
 		None,
 		None,
 		Settings {
-			#[cfg(feature = "barnes_hut")]
-			barnes_hut: None,
-			chunk_size: None, //Some(256),
-			dimensions: 2,
+			barnes_hut: 0.5,
 			dissuade_hubs: false,
 			ka: 0.5,
 			kg: 1.0,
@@ -56,8 +53,8 @@ fn main() {
 	//draw_graph(&layout, ITERATIONS);
 }
 
-fn draw_graph(layout: &Layout<T>, iteration: u32) {
-	let mut min_v = layout.points.get_clone(0);
+fn draw_graph(layout: &Layout<T, 2>, iteration: u32) {
+	let mut min_v = layout.points[0];
 	let mut max_v = min_v.clone();
 	let min = min_v.as_mut_slice();
 	let max = max_v.as_mut_slice();
@@ -102,7 +99,7 @@ fn draw_graph(layout: &Layout<T>, iteration: u32) {
 			root.draw(&PathElement::new(
 				vec![
 					{
-						let pos = layout.points.get(*h1);
+						let pos = layout.points[*h1];
 						unsafe {
 							(
 								((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
@@ -111,7 +108,7 @@ fn draw_graph(layout: &Layout<T>, iteration: u32) {
 						}
 					},
 					{
-						let pos = layout.points.get(*h2);
+						let pos = layout.points[*h2];
 						unsafe {
 							(
 								((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),

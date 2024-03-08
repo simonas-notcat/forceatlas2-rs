@@ -44,16 +44,13 @@ fn main() {
 
 	println!("Nodes: {}", nodes);
 
-	let mut layout = Layout::<f32>::from_graph(
+	let mut layout = Layout::<f32, 2>::from_graph(
 		edges,
 		Nodes::Degree(nodes),
 		None,
 		None,
 		Settings {
-			#[cfg(feature = "barnes_hut")]
-			barnes_hut: None,
-			chunk_size: None,
-			dimensions: 2,
+			barnes_hut: 0.5,
 			dissuade_hubs: false,
 			ka: 0.01,
 			kg: 0.001,
@@ -76,8 +73,8 @@ fn main() {
 	draw_graph(&layout, ITERATIONS);
 }
 
-fn draw_graph(layout: &Layout<f32>, iteration: u32) {
-	let mut min_v = layout.points.get_clone(0);
+fn draw_graph(layout: &Layout<f32, 2>, iteration: u32) {
+	let mut min_v = layout.points[0];
 	let mut max_v = min_v.clone();
 	let min = min_v.as_mut_slice();
 	let max = max_v.as_mut_slice();
@@ -122,7 +119,7 @@ fn draw_graph(layout: &Layout<f32>, iteration: u32) {
 			root.draw(&PathElement::new(
 				vec![
 					{
-						let pos = layout.points.get(*h1);
+						let pos = layout.points[*h1];
 						unsafe {
 							(
 								((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
@@ -131,7 +128,7 @@ fn draw_graph(layout: &Layout<f32>, iteration: u32) {
 						}
 					},
 					{
-						let pos = layout.points.get(*h2);
+						let pos = layout.points[*h2];
 						unsafe {
 							(
 								((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),

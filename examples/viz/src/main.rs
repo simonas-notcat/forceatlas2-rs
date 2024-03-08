@@ -51,7 +51,6 @@ fn main() {
 
 	let settings = Settings {
 		barnes_hut: 0.5,
-		chunk_size: Some(256),
 		dissuade_hubs: false,
 		ka: 1.0,
 		kg: 1.0,

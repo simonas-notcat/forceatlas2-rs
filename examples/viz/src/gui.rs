@@ -2,10 +2,7 @@ use crate::{drawer::DrawSettings, T};
 
 use forceatlas2::*;
 use gio::prelude::*;
-use gtk::{
-	prelude::*,
-	traits::{EntryExt, GtkSettingsExt},
-};
+use gtk::prelude::*;
 use parking_lot::RwLock;
 use rand::Rng;
 use static_rc::StaticRc;
@@ -57,7 +54,6 @@ fn build_ui(
 	let reset_button: gtk::Button = builder.object("bt_reset").unwrap();
 	let save_img_button: gtk::Button = builder.object("bt_save_img").unwrap();
 	let copy_img_button: gtk::Button = builder.object("bt_copy_img").unwrap();
-	let chunk_size_input: gtk::Entry = builder.object("chunk_size").unwrap();
 	let ka_input: gtk::Entry = builder.object("ka").unwrap();
 	let kg_input: gtk::Entry = builder.object("kg").unwrap();
 	let kr_input: gtk::Entry = builder.object("kr").unwrap();
@@ -93,7 +89,6 @@ fn build_ui(
 
 		{
 			let settings = settings.read();
-			chunk_size_input.set_text(&settings.chunk_size.unwrap_or(0).to_string());
 			ka_input.set_text(&settings.ka.to_string());
 			kg_input.set_text(&settings.kg.to_string());
 			kr_input.set_text(&settings.kr.to_string());
@@ -323,26 +318,6 @@ fn build_ui(
 		move |_| {
 			if let Some(pixbuf) = pixbuf.read().as_ref() {
 				gtk::Clipboard::get(&gdk::SELECTION_CLIPBOARD).set_image(&pixbuf.0);
-			}
-		}
-	});
-
-	chunk_size_input.connect_changed({
-		let layout = layout.clone();
-		let settings = settings.clone();
-		move |entry| {
-			if let Ok(chunk_size) = entry.text().parse() {
-				entry.set_secondary_icon_name(None);
-				let mut settings = settings.write();
-				settings.chunk_size = if chunk_size == 0 {
-					None
-				} else {
-					Some(chunk_size)
-				};
-				let mut layout = layout.write();
-				layout.set_settings(settings.clone());
-			} else {
-				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
 		}
 	});

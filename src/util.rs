@@ -34,10 +34,10 @@ pub(crate) fn get_2_mut<T>(s: &mut [T], i1: usize, i2: usize) -> (&mut T, &mut T
 ///
 /// `n` is the number of spatial dimensions (1 => two points; 2 => circle; 3 => sphere; etc.).
 #[cfg(feature = "rand")]
-pub fn _sample_unit_nsphere<T: Coord, R: Rng, const N: usize>(rng: &mut R) -> [T; N]
+pub fn _sample_unit_nsphere<T, R: Rng, const N: usize>(rng: &mut R) -> [T; N]
 where
 	rand::distributions::Standard: rand::distributions::Distribution<T>,
-	T: rand::distributions::uniform::SampleUniform,
+	T: Coord + rand::distributions::uniform::SampleUniform,
 {
 	let ray: T = NumCast::from(N).unwrap();
 	let mut v = [T::zero(); N];
@@ -57,10 +57,10 @@ where
 ///
 /// `n` is the number of spatial dimensions (1 => segment; 2 => square; 3 => cube; etc.).
 #[cfg(feature = "rand")]
-pub fn sample_unit_ncube<T: Coord, R: Rng, const N: usize>(rng: &mut R) -> [T; N]
+pub fn sample_unit_ncube<T, R: Rng, const N: usize>(rng: &mut R) -> [T; N]
 where
 	rand::distributions::Standard: rand::distributions::Distribution<T>,
-	T: rand::distributions::uniform::SampleUniform,
+	T: Coord + rand::distributions::uniform::SampleUniform,
 {
 	let ray: T = NumCast::from(N).unwrap();
 	let mut v = [T::zero(); N];

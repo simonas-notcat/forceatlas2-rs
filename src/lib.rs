@@ -1,5 +1,4 @@
 #![feature(specialization)]
-#![feature(stdsimd)]
 #![feature(trait_alias)]
 #![allow(incomplete_features)]
 
@@ -15,7 +14,7 @@ pub use util::{Coord, Edge, Nodes};
 
 use num_traits::cast::NumCast;
 
-impl<'a, T: Coord + std::fmt::Debug, const N: usize> Layout<T, N>
+impl<T: Coord + std::fmt::Debug, const N: usize> Layout<T, N>
 where
 	Layout<T, N>: forces::Repulsion<T, N> + forces::Attraction<T, N>,
 {
@@ -33,6 +32,7 @@ where
 			speeds: Vec::new(),
 			old_speeds: Vec::new(),
 			weights: if weighted { Some(Vec::new()) } else { None },
+			bump: parking_lot::Mutex::new(bumpalo::Bump::new()),
 			fn_attraction: Self::choose_attraction(&settings),
 			fn_gravity: forces::choose_gravity(&settings),
 			fn_repulsion: Self::choose_repulsion(&settings),
@@ -94,6 +94,11 @@ where
 			speeds: (0..nb).map(|_| [T::zero(); N]).collect(),
 			old_speeds: (0..nb).map(|_| [T::zero(); N]).collect(),
 			weights,
+			bump: parking_lot::Mutex::new(bumpalo::Bump::with_capacity(
+				(nb + 4 * (nb.checked_ilog2().unwrap_or(0) as usize + 1))
+					* std::mem::size_of::<trees::NodeN<T, forces::repulsion::NodeBodyN<T, N>, N, 1>>(
+					),
+			)),
 			fn_attraction: Self::choose_attraction(&settings),
 			fn_gravity: forces::choose_gravity(&settings),
 			fn_repulsion: Self::choose_repulsion(&settings),
@@ -113,10 +118,7 @@ where
 		positions: Vec<[T; N]>,
 		weights: Option<Vec<T>>,
 		settings: Settings<T>,
-	) -> Self
-	where
-		T: 'a,
-	{
+	) -> Self {
 		if let Some(weights) = &weights {
 			assert_eq!(weights.len(), edges.len());
 		}
@@ -144,6 +146,11 @@ where
 
 		assert_eq!(positions.len(), nodes.len());
 		Self {
+			bump: parking_lot::Mutex::new(bumpalo::Bump::with_capacity(
+				(nodes.len() + 4 * (nodes.len().checked_ilog2().unwrap_or(0) as usize + 1))
+					* std::mem::size_of::<trees::NodeN<T, forces::repulsion::NodeBodyN<T, N>, N, 1>>(
+					),
+			)),
 			edges,
 			sizes,
 			points: positions,
@@ -343,18 +350,17 @@ mod tests {
 			vec![(0, 1)],
 			Nodes::Degree(2),
 			None,
-			vec![-1.0, -1.0, 1.0, 1.0],
+			vec![[-1.0, -1.0], [1.0, 1.0]],
 			None,
 			Settings::default(),
 		);
 		layout
 			.speeds
-			.points
 			.iter_mut()
 			.enumerate()
-			.for_each(|(i, s)| *s += i as f64);
+			.for_each(|(i, s)| *s = [i as f64, i as f64]);
 		layout.init_iteration();
-		assert_eq!(layout.speeds.points, vec![0.0, 0.0, 0.0, 0.0]);
+		assert_eq!(&layout.speeds, &[[0.0, 0.0], [0.0, 0.0]]);
 	}
 
 	#[test]
@@ -363,7 +369,7 @@ mod tests {
 			vec![(0, 1)],
 			Nodes::Degree(2),
 			None,
-			vec![-2.0, -2.0, 1.0, 2.0],
+			vec![[-2.0, -2.0], [1.0, 2.0]],
 			None,
 			Settings::default(),
 		);
@@ -371,8 +377,8 @@ mod tests {
 		layout.init_iteration();
 		layout.apply_attraction();
 
-		let speed_1 = dbg!(layout.speeds.get(0));
-		let speed_2 = dbg!(layout.speeds.get(1));
+		let speed_1 = dbg!(layout.speeds[0]);
+		let speed_2 = dbg!(layout.speeds[1]);
 
 		assert!(speed_1[0] > 0.0);
 		assert!(speed_1[1] > 0.0);
@@ -386,8 +392,8 @@ mod tests {
 		layout.init_iteration();
 		layout.apply_repulsion();
 
-		let speed_1 = dbg!(layout.speeds.get(0));
-		let speed_2 = dbg!(layout.speeds.get(1));
+		let speed_1 = dbg!(layout.speeds[0]);
+		let speed_2 = dbg!(layout.speeds[1]);
 
 		assert!(speed_1[0] < 0.0);
 		assert!(speed_1[1] < 0.0);
@@ -401,8 +407,8 @@ mod tests {
 		layout.init_iteration();
 		layout.apply_gravity();
 
-		let speed_1 = dbg!(layout.speeds.get(0));
-		let speed_2 = dbg!(layout.speeds.get(1));
+		let speed_1 = dbg!(layout.speeds[0]);
+		let speed_2 = dbg!(layout.speeds[1]);
 
 		assert!(speed_1[0] > 0.0);
 		assert!(speed_1[1] > 0.0);
@@ -415,40 +421,14 @@ mod tests {
 	}
 
 	#[test]
-	fn test_barnes_hut_2d() {
-		let mut layout = Layout::<f64, 2>::from_position_graph(
-			vec![(0, 1)],
-			Nodes::Degree(2),
-			None,
-			vec![-1.0, -1.0, 1.0, 1.0],
-			None,
-			Settings::default(),
-		);
-
-		layout.settings.barnes_hut = Some(0.5);
-		layout.init_iteration();
-		layout.apply_repulsion();
-
-		let speed_1 = dbg!(layout.speeds.get(0));
-		let speed_2 = dbg!(layout.speeds.get(1));
-
-		assert!(speed_1[0] < 0.0);
-		assert!(speed_1[1] < 0.0);
-		assert!(speed_2[0] > 0.0);
-		assert!(speed_2[1] > 0.0);
-	}
-
-	#[test]
 	fn test_convergence() {
 		let mut layout = Layout::<f64, 2>::from_position_graph(
 			vec![(0, 1), (1, 2)],
 			Nodes::Degree(3),
 			None,
-			vec![-1.1, -1.0, 0.0, 0.0, 1.0, 1.0],
+			vec![[-1.1, -1.0], [0.0, 0.0], [1.0, 1.0]],
 			None,
 			Settings {
-				#[cfg(feature = "parallel")]
-				chunk_size: None,
 				dissuade_hubs: false,
 				ka: 0.5,
 				kg: 0.01,
@@ -465,19 +445,19 @@ mod tests {
 			println!("new iteration");
 			layout.init_iteration();
 			layout.apply_attraction();
-			println!("{:?}", layout.speeds.points);
+			println!("{:?}", layout.speeds);
 			layout.init_iteration();
 			layout.apply_repulsion();
-			println!("{:?}", layout.speeds.points);
+			println!("{:?}", layout.speeds);
 			layout.init_iteration();
 			layout.apply_gravity();
-			println!("{:?}", layout.speeds.points);
+			println!("{:?}", layout.speeds);
 			layout.apply_forces();
 			//layout.iteration();
 
-			dbg!(&layout.points.points);
-			let point_1 = layout.points.get(0);
-			let point_2 = layout.points.get(1);
+			dbg!(&layout.points);
+			let point_1 = layout.points[0];
+			let point_2 = layout.points[1];
 			dbg!(((point_2[0] - point_1[0]).powi(2) + (point_2[1] - point_1[1]).powi(2)).sqrt());
 		}
 	}
@@ -488,11 +468,9 @@ mod tests {
 			vec![(0, 1), (1, 2)],
 			Nodes::Degree(3),
 			Some(vec![1.0, 5.0, 1.0]),
-			vec![-1.1, -1.0, 0.0, 0.0, 1.0, 1.0],
+			vec![[-1.1, -1.0], [0.0, 0.0], [1.0, 1.0]],
 			None,
 			Settings {
-				#[cfg(feature = "parallel")]
-				chunk_size: None,
 				dissuade_hubs: false,
 				ka: 0.5,
 				kg: 0.01,
@@ -509,19 +487,19 @@ mod tests {
 			println!("new iteration");
 			layout.init_iteration();
 			layout.apply_attraction();
-			println!("{:?}", layout.speeds.points);
+			println!("{:?}", layout.speeds);
 			layout.init_iteration();
 			layout.apply_repulsion();
-			println!("{:?}", layout.speeds.points);
+			println!("{:?}", layout.speeds);
 			layout.init_iteration();
 			layout.apply_gravity();
-			println!("{:?}", layout.speeds.points);
+			println!("{:?}", layout.speeds);
 			layout.apply_forces();
 			//layout.iteration();
 
-			dbg!(&layout.points.points);
-			let point_1 = layout.points.get(0);
-			let point_2 = layout.points.get(1);
+			dbg!(&layout.points);
+			let point_1 = layout.points[0];
+			let point_2 = layout.points[1];
 			dbg!(((point_2[0] - point_1[0]).powi(2) + (point_2[1] - point_1[1]).powi(2)).sqrt());
 		}
 	}
