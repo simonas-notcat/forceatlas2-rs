@@ -20,6 +20,7 @@ where
 {
 	/// Instantiates an empty layout
 	pub fn empty(weighted: bool, settings: Settings<T>) -> Self {
+		assert!(settings.check());
 		Self {
 			edges: Vec::new(),
 			points: Vec::new(),
@@ -55,6 +56,7 @@ where
 		rand::distributions::Standard: rand::distributions::Distribution<T>,
 		T: rand::distributions::uniform::SampleUniform,
 	{
+		assert!(settings.check());
 		if let Some(weights) = &weights {
 			assert_eq!(weights.len(), edges.len());
 		}
@@ -119,6 +121,7 @@ where
 		weights: Option<Vec<T>>,
 		settings: Settings<T>,
 	) -> Self {
+		assert!(settings.check());
 		if let Some(weights) = &weights {
 			assert_eq!(weights.len(), edges.len());
 		}
@@ -252,6 +255,7 @@ where
 
 	/// Changes layout settings
 	pub fn set_settings(&mut self, settings: Settings<T>) {
+		assert!(settings.check());
 		self.fn_attraction = Self::choose_attraction(&settings);
 		self.fn_gravity = forces::choose_gravity(&settings);
 		self.fn_repulsion = Self::choose_repulsion(&settings);
@@ -437,7 +441,7 @@ mod tests {
 				prevent_overlapping: None,
 				speed: 1.0,
 				strong_gravity: false,
-				barnes_hut: 0.5,
+				theta: 0.5,
 			},
 		);
 
@@ -479,7 +483,7 @@ mod tests {
 				prevent_overlapping: Some(100.),
 				speed: 1.0,
 				strong_gravity: false,
-				barnes_hut: 0.5,
+				theta: 0.5,
 			},
 		);
 

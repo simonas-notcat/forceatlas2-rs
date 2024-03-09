@@ -1,10 +1,9 @@
 use forceatlas2::*;
-use plotters::prelude::*;
 use std::io::BufRead;
 
 const SIZE: (u32, u32) = (1024, 1024);
 
-const ITERATIONS: u32 = 2000;
+const ITERATIONS: u32 = 5000;
 const ANIM_MODE: bool = false;
 
 fn main() {
@@ -50,7 +49,7 @@ fn main() {
 		None,
 		None,
 		Settings {
-			barnes_hut: 0.5,
+			theta: 0.5,
 			dissuade_hubs: false,
 			ka: 0.01,
 			kg: 0.001,
@@ -67,7 +66,7 @@ fn main() {
 		if ANIM_MODE {
 			draw_graph(&layout, i);
 		}
-		print!("{}/{}\r", i, ITERATIONS);
+		// print!("{}/{}\r", i, ITERATIONS);
 		layout.iteration();
 	}
 	draw_graph(&layout, ITERATIONS);
@@ -111,49 +110,49 @@ fn draw_graph(layout: &Layout<f32, 2>, iteration: u32) {
 	} else {
 		"target/graph.png".into()
 	};
-	let root = BitMapBackend::new(&path, SIZE).into_drawing_area();
-	root.fill(&WHITE).unwrap();
+	// let root = BitMapBackend::new(&path, SIZE).into_drawing_area();
+	// root.fill(&WHITE).unwrap();
 
-	if !ANIM_MODE {
-		for (h1, h2) in layout.edges.iter() {
-			root.draw(&PathElement::new(
-				vec![
-					{
-						let pos = layout.points[*h1];
-						unsafe {
-							(
-								((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
-								((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
-							)
-						}
-					},
-					{
-						let pos = layout.points[*h2];
-						unsafe {
-							(
-								((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
-								((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
-							)
-						}
-					},
-				],
-				Into::<ShapeStyle>::into(&RGBColor(5, 5, 5).mix(0.05)).filled(),
-			))
-			.unwrap();
-		}
-	}
+	// if !ANIM_MODE {
+	// 	for (h1, h2) in layout.edges.iter() {
+	// 		root.draw(&PathElement::new(
+	// 			vec![
+	// 				{
+	// 					let pos = layout.points[*h1];
+	// 					unsafe {
+	// 						(
+	// 							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
+	// 							((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
+	// 						)
+	// 					}
+	// 				},
+	// 				{
+	// 					let pos = layout.points[*h2];
+	// 					unsafe {
+	// 						(
+	// 							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
+	// 							((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
+	// 						)
+	// 					}
+	// 				},
+	// 			],
+	// 			Into::<ShapeStyle>::into(&RGBColor(5, 5, 5).mix(0.05)).filled(),
+	// 		))
+	// 		.unwrap();
+	// 	}
+	// }
 
-	for pos in layout.points.iter() {
-		root.draw(&Circle::new(
-			unsafe {
-				(
-					((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
-					((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
-				)
-			},
-			2,
-			Into::<ShapeStyle>::into(&RED).filled(),
-		))
-		.unwrap();
-	}
+	// for pos in layout.points.iter() {
+	// 	root.draw(&Circle::new(
+	// 		unsafe {
+	// 			(
+	// 				((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
+	// 				((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
+	// 			)
+	// 		},
+	// 		2,
+	// 		Into::<ShapeStyle>::into(&RED).filled(),
+	// 	))
+	// 	.unwrap();
+	// }
 }

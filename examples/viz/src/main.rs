@@ -50,7 +50,7 @@ fn main() {
 	println!("Nodes: {}", nodes);
 
 	let settings = Settings {
-		barnes_hut: 0.5,
+		theta: 0.5,
 		dissuade_hubs: false,
 		ka: 1.0,
 		kg: 1.0,

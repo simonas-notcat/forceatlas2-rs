@@ -430,11 +430,11 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="barneshut_label">
+                  <object class="GtkLabel" id="theta_label">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="margin-end">2</property>
-                    <property name="label" translatable="yes">Barnes-Hut</property>
+                    <property name="label" translatable="yes">Theta</property>
                     <property name="xalign">1</property>
                   </object>
                   <packing>
@@ -443,7 +443,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkEntry" id="barneshut_theta">
+                  <object class="GtkEntry" id="theta">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="tooltip-text" translatable="yes">Node radius</property>
@@ -451,10 +451,10 @@
                     <property name="text" translatable="yes">0.5</property>
                     <property name="input-purpose">number</property>
                     <accessibility>
-                      <relation type="labelled-by" target="barneshut_label"/>
+                      <relation type="labelled-by" target="theta_label"/>
                     </accessibility>
                     <child internal-child="accessible">
-                      <object class="AtkObject" id="barneshut_theta-atkobject">
+                      <object class="AtkObject" id="theta-atkobject">
                         <property name="AtkObject::accessible-name" translatable="yes">Theta parameter for Barnes-Hut optimization</property>
                       </object>
                     </child>

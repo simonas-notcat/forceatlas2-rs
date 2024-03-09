@@ -58,7 +58,7 @@ fn build_ui(
 	let kg_input: gtk::Entry = builder.object("kg").unwrap();
 	let kr_input: gtk::Entry = builder.object("kr").unwrap();
 	let speed_input: gtk::Entry = builder.object("speed").unwrap();
-	let barneshut_input: gtk::Entry = builder.object("barneshut_theta").unwrap();
+	let theta_input: gtk::Entry = builder.object("theta").unwrap();
 	let draw_edges_input: gtk::CheckButton = builder.object("draw_edges").unwrap();
 	let edge_color_input: gtk::ColorButton = builder.object("edge_color").unwrap();
 	let draw_nodes_input: gtk::CheckButton = builder.object("draw_nodes").unwrap();
@@ -93,7 +93,7 @@ fn build_ui(
 			kg_input.set_text(&settings.kg.to_string());
 			kr_input.set_text(&settings.kr.to_string());
 			speed_input.set_text(&settings.speed.to_string());
-			barneshut_input.set_text(&settings.barnes_hut.to_string());
+			theta_input.set_text(&settings.theta.to_string());
 		}
 		draw_edges_input.set_active(draw_settings.draw_edges);
 		edge_color_input.set_rgba({
@@ -386,14 +386,14 @@ fn build_ui(
 		}
 	});
 
-	barneshut_input.connect_changed({
+	theta_input.connect_changed({
 		let layout = layout.clone();
 		let settings = settings.clone();
 		move |entry| {
 			if let Ok(theta) = entry.text().parse() {
 				entry.set_secondary_icon_name(None);
 				let mut settings = settings.write();
-				settings.barnes_hut = theta;
+				settings.theta = theta;
 				let mut layout = layout.write();
 				layout.set_settings(settings.clone());
 			} else {

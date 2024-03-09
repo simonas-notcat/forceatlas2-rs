@@ -20,9 +20,8 @@ rayon = { version = "1.8", optional = true }
 
 [dev-dependencies]
 alloc_counter = "0.0.4"
-plotters = "0.3"
 scanrs = "0.3"
-sdl2 = "0.35"
+sdl2 = "0.36"
 
 [features]
 default = ["rand", "parallel"]

@@ -114,7 +114,7 @@ fn main() {
 	println!("Nodes: {}", nodes);
 
 	let mut settings = Settings {
-		barnes_hut: 0.5,
+		theta: 0.5,
 		dissuade_hubs: false,
 		ka: 0.01,
 		kg: 0.001,

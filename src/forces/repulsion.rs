@@ -66,7 +66,7 @@ pub fn apply_repulsion_2d<T: Coord + Send + Sync>(layout: &mut Layout<T, 2>) {
 	}
 
 	let kr = layout.settings.kr;
-	let theta = layout.settings.barnes_hut;
+	let theta = layout.settings.theta;
 
 	layout
 		.points
@@ -130,7 +130,7 @@ pub fn apply_repulsion_3d<T: Coord + Send + Sync>(layout: &mut Layout<T, 3>) {
 	}
 
 	let kr = layout.settings.kr;
-	let theta = layout.settings.barnes_hut;
+	let theta = layout.settings.theta;
 
 	layout
 		.points

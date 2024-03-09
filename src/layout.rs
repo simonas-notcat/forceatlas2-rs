@@ -2,8 +2,11 @@ use crate::util::*;
 
 #[derive(Clone)]
 pub struct Settings<T: Coord> {
-	/// Theta for Barnes-Hut computation
-	pub barnes_hut: T,
+	/// Precision setting for Barnes-Hut computation
+	///
+	/// Must be in `(0.0..1.0)`. `0.0` is accurate and slow, `1.0` is unaccurate and fast.
+	/// Default is `0.5`.
+	pub theta: T,
 	/// Move hubs (high degree nodes) to the center
 	pub dissuade_hubs: bool,
 	/// Attraction coefficient
@@ -29,7 +32,7 @@ pub struct Settings<T: Coord> {
 impl<T: Coord> Default for Settings<T> {
 	fn default() -> Self {
 		Self {
-			barnes_hut: T::one() / (T::one() + T::one()),
+			theta: T::one() / (T::one() + T::one()),
 			dissuade_hubs: false,
 			ka: T::one(),
 			kg: T::one(),
@@ -42,19 +45,24 @@ impl<T: Coord> Default for Settings<T> {
 	}
 }
 
+impl<T: Coord> Settings<T> {
+	pub fn check(&self) -> bool {
+		self.theta >= T::zero() && self.theta <= T::one()
+	}
+}
+
 pub struct Layout<T: Coord, const N: usize> {
 	pub edges: Vec<Edge>,
 	pub masses: Vec<T>,
-	pub sizes: Option<Vec<T>>,
-	/// List of the nodes' positions
 	pub points: Vec<[T; N]>,
-	pub(crate) settings: Settings<T>,
+	pub sizes: Option<Vec<T>>,
 	pub speeds: Vec<[T; N]>,
 	pub old_speeds: Vec<[T; N]>,
 	pub weights: Option<Vec<T>>,
+	// Mutex needed here to be Sync
 	pub(crate) bump: parking_lot::Mutex<bumpalo::Bump>,
-
 	pub(crate) fn_attraction: fn(&mut Self),
 	pub(crate) fn_gravity: fn(&mut Self),
 	pub(crate) fn_repulsion: fn(&mut Self),
+	pub(crate) settings: Settings<T>,
 }
