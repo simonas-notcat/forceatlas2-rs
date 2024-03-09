@@ -61,12 +61,22 @@ fn main() {
 		strong_gravity: false,
 	};
 
-	let layout = Arc::new(RwLock::new(Layout::<T, 2>::from_graph(
-		edges,
-		Nodes::Degree(nodes),
-		None,
-		Some(weights),
-		settings.clone(),
+	let layout = Arc::new(RwLock::new((
+		false,
+		Layout::<T, 2>::from_graph(
+			edges.clone(),
+			Nodes::Degree(nodes),
+			None,
+			Some(weights.clone()),
+			settings.clone(),
+		),
+		Layout::<T, 3>::from_graph(
+			edges,
+			Nodes::Degree(nodes),
+			None,
+			Some(weights),
+			settings.clone(),
+		),
 	)));
 
 	let compute = Arc::new(RwLock::new(false));
@@ -80,7 +90,12 @@ fn main() {
 		move || loop {
 			thread::sleep(if *compute.read() {
 				let mut nb_iters = nb_iters.write();
-				layout.write().iteration();
+				let mut layout_guard = layout.write();
+				if layout_guard.0 {
+					layout_guard.2.iteration();
+				} else {
+					layout_guard.1.iteration();
+				}
 				*nb_iters += 1;
 				COMPUTE_SLEEP
 			} else {

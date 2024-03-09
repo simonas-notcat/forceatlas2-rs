@@ -31,12 +31,11 @@ fn build_ui(
 	rx: Arc<RwLock<Option<glib::Receiver<MsgToGtk>>>>,
 	tx: Arc<RwLock<MsgFromGtk>>,
 	compute: Arc<RwLock<bool>>,
-	layout: Arc<RwLock<Layout<T, 2>>>,
+	layout: Arc<RwLock<(bool, Layout<T, 2>, Layout<T, 3>)>>,
 	settings: Arc<RwLock<Settings<T>>>,
 	pixbuf: Arc<RwLock<Option<Pixbuf>>>,
 	draw_settings: Arc<RwLock<DrawSettings>>,
 	zoom: Arc<RwLock<T>>,
-	d3: Arc<RwLock<bool>>,
 	nb_iters: Arc<RwLock<usize>>,
 ) {
 	let builder = gtk::Builder::new();
@@ -129,8 +128,8 @@ fn build_ui(
 		let layout = layout.read();
 		let nb_nodes_disp: gtk::Label = builder.object("nb_nodes").unwrap();
 		let nb_edges_disp: gtk::Label = builder.object("nb_edges").unwrap();
-		nb_nodes_disp.set_text(&layout.masses.len().to_string());
-		nb_edges_disp.set_text(&layout.edges.len().to_string());
+		nb_nodes_disp.set_text(&layout.1.masses.len().to_string());
+		nb_edges_disp.set_text(&layout.1.edges.len().to_string());
 	}
 
 	let graph_area = StaticRc::<gtk::Image, 1, 1>::new(graph_area);
@@ -256,10 +255,19 @@ fn build_ui(
 		move |_| {
 			let mut rng = rand::thread_rng();
 			let mut layout = layout.write();
-			layout.old_speeds.fill([0.0; 2]);
+			layout.1.old_speeds.fill([0.0; 2]);
+			layout.2.old_speeds.fill([0.0; 3]);
 			layout
+				.1
 				.points
 				.fill_with(|| [rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0)]);
+			layout.2.points.fill_with(|| {
+				[
+					rng.gen_range(-1.0..1.0),
+					rng.gen_range(-1.0..1.0),
+					rng.gen_range(-1.0..1.0),
+				]
+			});
 			tx.write().redraw = true;
 			*nb_iters.write() = 0;
 		}
@@ -331,7 +339,8 @@ fn build_ui(
 				let mut settings = settings.write();
 				settings.ka = ka;
 				let mut layout = layout.write();
-				layout.set_settings(settings.clone());
+				layout.1.set_settings(settings.clone());
+				layout.2.set_settings(settings.clone());
 			} else {
 				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
@@ -347,7 +356,8 @@ fn build_ui(
 				let mut settings = settings.write();
 				settings.kg = kg;
 				let mut layout = layout.write();
-				layout.set_settings(settings.clone());
+				layout.1.set_settings(settings.clone());
+				layout.2.set_settings(settings.clone());
 			} else {
 				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
@@ -363,7 +373,8 @@ fn build_ui(
 				let mut settings = settings.write();
 				settings.kr = kr;
 				let mut layout = layout.write();
-				layout.set_settings(settings.clone());
+				layout.1.set_settings(settings.clone());
+				layout.2.set_settings(settings.clone());
 			} else {
 				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
@@ -379,7 +390,8 @@ fn build_ui(
 				let mut settings = settings.write();
 				settings.speed = speed;
 				let mut layout = layout.write();
-				layout.set_settings(settings.clone());
+				layout.1.set_settings(settings.clone());
+				layout.2.set_settings(settings.clone());
 			} else {
 				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
@@ -395,7 +407,8 @@ fn build_ui(
 				let mut settings = settings.write();
 				settings.theta = theta;
 				let mut layout = layout.write();
-				layout.set_settings(settings.clone());
+				layout.1.set_settings(settings.clone());
+				layout.2.set_settings(settings.clone());
 			} else {
 				entry.set_secondary_icon_name(Some("emblem-unreadable"));
 			}
@@ -507,29 +520,15 @@ fn build_ui(
 		}
 	});
 
-	// TODO
-	/*d3_input.connect_toggled({
+	d3_input.connect_toggled({
 		let tx = tx.clone();
 		let nb_iters = nb_iters.clone();
 		move |d3_input| {
-			let mut d3 = d3.write();
-			let mut layout = layout.write();
-			let mut settings = settings.write();
-			*d3 = d3_input.is_active();
-			settings.dimensions = if *d3 { 3 } else { 2 };
-			*layout = Layout::from_graph(
-				layout.edges.clone(),
-				Nodes::Degree(layout.masses.len()),
-				None,
-				layout.weights.clone(),
-				settings.clone(),
-			);
+			layout.write().0 = d3_input.is_active();
 			*nb_iters.write() = 0;
 			tx.write().redraw = true;
-			drop(layout);
 		}
 	});
-	*/
 
 	let resize_handler = {
 		let pixbuf = pixbuf.clone();
@@ -576,7 +575,7 @@ fn build_ui(
 
 pub fn run(
 	compute: Arc<RwLock<bool>>,
-	layout: Arc<RwLock<Layout<T, 2>>>,
+	layout: Arc<RwLock<(bool, Layout<T, 2>, Layout<T, 3>)>>,
 	settings: Arc<RwLock<Settings<T>>>,
 	nb_iters: Arc<RwLock<usize>>,
 ) {
@@ -602,7 +601,6 @@ pub fn run(
 		camera_angle: (0.0, 0.0),
 	}));
 	let zoom = Arc::new(RwLock::new(1.0));
-	let d3 = Arc::new(RwLock::new(false));
 
 	application.connect_activate({
 		let compute = compute.clone();
@@ -610,7 +608,6 @@ pub fn run(
 		let pixbuf = pixbuf.clone();
 		let draw_settings = draw_settings.clone();
 		let msg_from_gtk = msg_from_gtk.clone();
-		let d3 = d3.clone();
 		move |app| {
 			build_ui(
 				app,
@@ -622,7 +619,6 @@ pub fn run(
 				pixbuf.clone(),
 				draw_settings.clone(),
 				zoom.clone(),
-				d3.clone(),
 				nb_iters.clone(),
 			)
 		}
@@ -632,14 +628,14 @@ pub fn run(
 		thread::sleep(if *compute.read() {
 			if let Some(pixbuf) = pixbuf.write().as_ref() {
 				let layout = layout.read();
-				if *d3.read() {
-					// crate::drawer::draw_graph_3d(
-					// 	layout,
-					// 	(pixbuf.0.width(), pixbuf.0.height()),
-					// 	unsafe { pixbuf.0.pixels() },
-					// 	pixbuf.0.rowstride(),
-					// 	draw_settings.read().clone(),
-					// );
+				if layout.0 {
+					crate::drawer::draw_graph_3d(
+						layout,
+						(pixbuf.0.width(), pixbuf.0.height()),
+						unsafe { pixbuf.0.pixels() },
+						pixbuf.0.rowstride(),
+						draw_settings.read().clone(),
+					);
 				} else {
 					crate::drawer::draw_graph(
 						layout,
@@ -668,14 +664,14 @@ pub fn run(
 				msg_from_gtk.redraw = false;
 				if let Some(pixbuf) = pixbuf.write().as_ref() {
 					let layout = layout.read();
-					if *d3.read() {
-						// crate::drawer::draw_graph_3d(
-						// 	layout,
-						// 	(pixbuf.0.width(), pixbuf.0.height()),
-						// 	unsafe { pixbuf.0.pixels() },
-						// 	pixbuf.0.rowstride(),
-						// 	draw_settings.read().clone(),
-						// );
+					if layout.0 {
+						crate::drawer::draw_graph_3d(
+							layout,
+							(pixbuf.0.width(), pixbuf.0.height()),
+							unsafe { pixbuf.0.pixels() },
+							pixbuf.0.rowstride(),
+							draw_settings.read().clone(),
+						);
 					} else {
 						crate::drawer::draw_graph(
 							layout,

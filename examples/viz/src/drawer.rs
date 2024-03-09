@@ -176,7 +176,7 @@ pub fn draw_disk(
 }
 
 pub fn draw_graph(
-	layout: parking_lot::RwLockReadGuard<Layout<T, 2>>,
+	layout: parking_lot::RwLockReadGuard<(bool, Layout<T, 2>, Layout<T, 3>)>,
 	size: (i32, i32),
 	pixels: &mut [u8],
 	rowstride: i32,
@@ -195,7 +195,7 @@ pub fn draw_graph(
 		.zip(IntoIterator::into_iter([bg_color.0, bg_color.1, bg_color.2]).cycle())
 		.for_each(|(px, bg)| *px = bg);
 
-	let mut iter = layout.points.iter();
+	let mut iter = layout.1.points.iter();
 	let mut min = *iter.next().unwrap();
 	let mut max = min;
 	for pos in iter {
@@ -226,14 +226,14 @@ pub fn draw_graph(
 	};
 
 	if draw_edges {
-		for (h1, h2) in layout.edges.iter() {
+		for (h1, h2) in layout.1.edges.iter() {
 			draw_line(
 				pixels,
 				size,
 				rowstride,
 				edge_color,
 				{
-					let pos = layout.points[*h1];
+					let pos = layout.1.points[*h1];
 					unsafe {
 						(
 							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
@@ -242,7 +242,7 @@ pub fn draw_graph(
 					}
 				},
 				{
-					let pos = layout.points[*h2];
+					let pos = layout.1.points[*h2];
 					unsafe {
 						(
 							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
@@ -255,7 +255,7 @@ pub fn draw_graph(
 	}
 
 	if draw_nodes {
-		for pos in layout.points.iter() {
+		for pos in layout.1.points.iter() {
 			draw_disk(
 				pixels,
 				size,
@@ -276,7 +276,7 @@ pub fn draw_graph(
 }
 
 pub fn draw_graph_3d(
-	layout: parking_lot::RwLockReadGuard<Layout<T, 3>>,
+	layout: parking_lot::RwLockReadGuard<(bool, Layout<T, 2>, Layout<T, 3>)>,
 	size: (i32, i32),
 	pixels: &mut [u8],
 	rowstride: i32,
@@ -294,7 +294,7 @@ pub fn draw_graph_3d(
 		.for_each(|(px, bg)| *px = bg);
 
 	let mut l = 1.0;
-	for pos in layout.points.iter() {
+	for pos in layout.2.points.iter() {
 		let li = (pos[1] * 1.25).max(pos[0] * 1.25) + pos[2];
 		if li > l {
 			l = li;
@@ -323,9 +323,9 @@ pub fn draw_graph_3d(
 	);
 
 	if draw_edges {
-		for (h1, h2) in layout.edges.iter() {
-			let p1 = layout.points[*h1];
-			let p2 = layout.points[*h2];
+		for (h1, h2) in layout.2.edges.iter() {
+			let p1 = layout.2.points[*h1];
+			let p2 = layout.2.points[*h2];
 			let proj = camera.world_to_pixel(&cam_geom::Points::new(unsafe {
 				Matrix2x3::new(
 					*p1.get_unchecked(0) as f32,
