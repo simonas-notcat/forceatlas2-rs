@@ -8,19 +8,16 @@ use crate::{
 };
 
 #[doc(hidden)]
-pub trait Attraction<T: Coord + std::fmt::Debug, const N: usize> {
+pub trait Attraction<T: Coord, const N: usize> {
 	fn choose_attraction(settings: &Settings<T>) -> fn(&mut Layout<T, N>);
 }
 
 #[doc(hidden)]
-pub trait Repulsion<T: Coord + std::fmt::Debug, const N: usize> {
+pub trait Repulsion<T: Coord, const N: usize> {
 	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T, N>);
 }
 
-impl<T, const N: usize> Attraction<T, N> for Layout<T, N>
-where
-	T: Coord + std::fmt::Debug,
-{
+impl<T: Coord, const N: usize> Attraction<T, N> for Layout<T, N> {
 	#[allow(clippy::collapsible_else_if)]
 	fn choose_attraction(settings: &Settings<T>) -> fn(&mut Layout<T, N>) {
 		if settings.prevent_overlapping.is_some() {
@@ -55,9 +52,7 @@ where
 	}
 }
 
-pub fn choose_gravity<T: Coord + std::fmt::Debug, const N: usize>(
-	settings: &Settings<T>,
-) -> fn(&mut Layout<T, N>) {
+pub fn choose_gravity<T: Coord, const N: usize>(settings: &Settings<T>) -> fn(&mut Layout<T, N>) {
 	if settings.kg.is_zero() {
 		return |_| {};
 	}
@@ -68,10 +63,7 @@ pub fn choose_gravity<T: Coord + std::fmt::Debug, const N: usize>(
 	}
 }
 
-impl<T: Send + Sync> Repulsion<T, 2> for Layout<T, 2>
-where
-	T: Coord + std::fmt::Debug,
-{
+impl<T: Coord + Send + Sync> Repulsion<T, 2> for Layout<T, 2> {
 	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T, 2>) {
 		if settings.prevent_overlapping.is_some() {
 			todo!()
@@ -81,10 +73,7 @@ where
 	}
 }
 
-impl<T: Send + Sync> Repulsion<T, 3> for Layout<T, 3>
-where
-	T: Coord + std::fmt::Debug,
-{
+impl<T: Coord + Send + Sync> Repulsion<T, 3> for Layout<T, 3> {
 	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T, 3>) {
 		if settings.prevent_overlapping.is_some() {
 			todo!()

@@ -1,7 +1,7 @@
 use crate::util::*;
 
 #[derive(Clone)]
-pub struct Settings<T: Coord> {
+pub struct Settings<T> {
 	/// Precision setting for Barnes-Hut computation
 	///
 	/// Must be in `(0.0..1.0)`. `0.0` is accurate and slow, `1.0` is unaccurate and fast.
@@ -51,7 +51,7 @@ impl<T: Coord> Settings<T> {
 	}
 }
 
-pub struct Layout<T: Coord, const N: usize> {
+pub struct Layout<T, const N: usize> {
 	pub edges: Vec<Edge>,
 	pub masses: Vec<T>,
 	pub points: Vec<[T; N]>,

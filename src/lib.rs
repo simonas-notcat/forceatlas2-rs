@@ -1,6 +1,4 @@
-#![feature(specialization)]
 #![feature(trait_alias)]
-#![allow(incomplete_features)]
 
 mod forces;
 mod layout;
@@ -14,7 +12,7 @@ pub use util::{Coord, Edge, Nodes};
 
 use num_traits::cast::NumCast;
 
-impl<T: Coord + std::fmt::Debug, const N: usize> Layout<T, N>
+impl<T: Coord, const N: usize> Layout<T, N>
 where
 	Layout<T, N>: forces::Repulsion<T, N> + forces::Attraction<T, N>,
 {

@@ -1,6 +1,6 @@
 use crate::{layout::Layout, util::*};
 
-pub fn apply_gravity<T: Coord + std::fmt::Debug, const N: usize>(layout: &mut Layout<T, N>) {
+pub fn apply_gravity<T: Coord, const N: usize>(layout: &mut Layout<T, N>) {
 	for ((mass, pos), speed) in layout
 		.masses
 		.iter()
@@ -21,7 +21,7 @@ pub fn apply_gravity<T: Coord + std::fmt::Debug, const N: usize>(layout: &mut La
 	}
 }
 
-pub fn apply_gravity_sg<T: Coord + std::fmt::Debug, const N: usize>(layout: &mut Layout<T, N>) {
+pub fn apply_gravity_sg<T: Coord, const N: usize>(layout: &mut Layout<T, N>) {
 	for ((mass, pos), speed) in layout
 		.masses
 		.iter()

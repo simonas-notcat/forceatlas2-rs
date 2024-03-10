@@ -15,10 +15,7 @@ pub(crate) struct NodeBodyN<T, const N: usize> {
 type NodeBody2<T> = NodeBodyN<T, 2>;
 type NodeBody3<T> = NodeBodyN<T, 3>;
 
-impl<T, const N: usize> Body<T, N> for NodeBodyN<T, N>
-where
-	T: Coord,
-{
+impl<T: Coord, const N: usize> Body<T, N> for NodeBodyN<T, N> {
 	fn mass(&self) -> T {
 		self.mass
 	}

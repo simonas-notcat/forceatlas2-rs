@@ -12,7 +12,6 @@ pub trait Coord = AddAssign<Self>
 	+ DivAssign<Self>
 	+ FromPrimitive
 	+ Real
-	+ NumCast
 	+ Signed
 	+ SubAssign<Self>
 	+ MulAssign<Self>
