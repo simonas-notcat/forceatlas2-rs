@@ -1,19 +1,18 @@
 use forceatlas2::*;
 use std::io::BufRead;
 
-const SIZE: (u32, u32) = (1024, 1024);
-
-const ITERATIONS: u32 = 5000;
-const ANIM_MODE: bool = false;
+const DEFAULT_ITERATIONS: usize = 1000;
 
 fn main() {
-	let file = std::fs::File::open(
-		std::env::args()
-			.skip(1)
-			.next()
-			.expect("Usage: csv_import <csv_file>"),
-	)
-	.expect("Cannot open file");
+	let mut args = std::env::args().skip(1);
+	let filename = args.next().expect(&format!(
+		"Usage: csv_import <csv_file> [iterations (default={})]",
+		DEFAULT_ITERATIONS
+	));
+	let iterations = args.next().map_or(DEFAULT_ITERATIONS, |arg| {
+		arg.parse().expect("Invalid argument iterations")
+	});
+	let file = std::fs::File::open(filename).expect("Cannot open file");
 
 	let mut nodes = 0usize;
 	let mut edges = Vec::<(usize, usize)>::new();
@@ -41,7 +40,7 @@ fn main() {
 	}
 	nodes += 1;
 
-	println!("Nodes: {}", nodes);
+	eprintln!("Nodes: {}", nodes);
 
 	let mut layout = Layout::<f32, 2>::from_graph(
 		edges,
@@ -61,98 +60,12 @@ fn main() {
 		},
 	);
 
-	eprintln!("Computing layout...");
-	for i in 0..ITERATIONS {
-		if ANIM_MODE {
-			draw_graph(&layout, i);
-		}
-		// print!("{}/{}\r", i, ITERATIONS);
+	for i in 0..iterations {
+		eprint!("{}/{}\r", i, iterations);
 		layout.iteration();
 	}
-	draw_graph(&layout, ITERATIONS);
-}
 
-fn draw_graph(layout: &Layout<f32, 2>, iteration: u32) {
-	let mut min_v = layout.points[0];
-	let mut max_v = min_v.clone();
-	let min = min_v.as_mut_slice();
-	let max = max_v.as_mut_slice();
-	for pos in layout.points.iter() {
-		if pos[0] < min[0] {
-			min[0] = pos[0];
-		}
-		if pos[1] < min[1] {
-			min[1] = pos[1];
-		}
-		if pos[0] > max[0] {
-			max[0] = pos[0];
-		}
-		if pos[1] > max[1] {
-			max[1] = pos[1];
-		}
+	for node in layout.points {
+		println!("{}\t{}", node[0], node[1]);
 	}
-	let graph_size = (max[0] - min[0], max[1] - min[1]);
-	let factor = {
-		let factors = (SIZE.0 as f32 / graph_size.0, SIZE.1 as f32 / graph_size.1);
-		if factors.0 > factors.1 {
-			min[0] -= (SIZE.0 as f32 / factors.1 - graph_size.0) / 2.0;
-			factors.1
-		} else {
-			min[1] -= (SIZE.1 as f32 / factors.0 - graph_size.1) / 2.0;
-			factors.0
-		}
-	};
-	println!("size:  {:?}", graph_size);
-	println!("scale: {}", factor);
-
-	let path = if ANIM_MODE {
-		format!("target/graph-{}.png", iteration)
-	} else {
-		"target/graph.png".into()
-	};
-	// let root = BitMapBackend::new(&path, SIZE).into_drawing_area();
-	// root.fill(&WHITE).unwrap();
-
-	// if !ANIM_MODE {
-	// 	for (h1, h2) in layout.edges.iter() {
-	// 		root.draw(&PathElement::new(
-	// 			vec![
-	// 				{
-	// 					let pos = layout.points[*h1];
-	// 					unsafe {
-	// 						(
-	// 							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
-	// 							((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
-	// 						)
-	// 					}
-	// 				},
-	// 				{
-	// 					let pos = layout.points[*h2];
-	// 					unsafe {
-	// 						(
-	// 							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
-	// 							((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
-	// 						)
-	// 					}
-	// 				},
-	// 			],
-	// 			Into::<ShapeStyle>::into(&RGBColor(5, 5, 5).mix(0.05)).filled(),
-	// 		))
-	// 		.unwrap();
-	// 	}
-	// }
-
-	// for pos in layout.points.iter() {
-	// 	root.draw(&Circle::new(
-	// 		unsafe {
-	// 			(
-	// 				((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
-	// 				((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
-	// 			)
-	// 		},
-	// 		2,
-	// 		Into::<ShapeStyle>::into(&RED).filled(),
-	// 	))
-	// 	.unwrap();
-	// }
 }
