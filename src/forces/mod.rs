@@ -13,6 +13,11 @@ pub trait Attraction<T: Coord, const N: usize> {
 }
 
 #[doc(hidden)]
+pub trait Gravity<T: Coord, const N: usize> {
+	fn choose_gravity(settings: &Settings<T>) -> fn(&mut Layout<T, N>);
+}
+
+#[doc(hidden)]
 pub trait Repulsion<T: Coord, const N: usize> {
 	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T, N>);
 }
@@ -52,14 +57,16 @@ impl<T: Coord, const N: usize> Attraction<T, N> for Layout<T, N> {
 	}
 }
 
-pub fn choose_gravity<T: Coord, const N: usize>(settings: &Settings<T>) -> fn(&mut Layout<T, N>) {
-	if settings.kg.is_zero() {
-		return |_| {};
-	}
-	if settings.strong_gravity {
-		gravity::apply_gravity_sg
-	} else {
-		gravity::apply_gravity
+impl<T: Coord + Send + Sync, const N: usize> Gravity<T, N> for Layout<T, N> {
+	fn choose_gravity(settings: &Settings<T>) -> fn(&mut Layout<T, N>) {
+		if settings.kg.is_zero() {
+			return |_| {};
+		}
+		if settings.strong_gravity {
+			gravity::apply_gravity_sg
+		} else {
+			gravity::apply_gravity
+		}
 	}
 }
 

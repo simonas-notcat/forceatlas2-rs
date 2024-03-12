@@ -15,14 +15,13 @@ bumpalo = { version = "3.4", features = ["boxed"] }
 num-traits = "0.2"
 parking_lot = "0.12"
 rand = { version = "0.8", optional = true }
-rayon = { version = "1.8", optional = true }
+rayon = version = "1.8"
 
 [dev-dependencies]
 alloc_counter = "0.0.4"
 
 [features]
-default = ["rand", "parallel"]
-parallel = ["rayon"]
+default = ["rand"]
 
 [workspace]
 members = ["examples/viz"]

@@ -4,7 +4,6 @@ use crate::{
 	util::*,
 };
 
-#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 pub(crate) struct NodeBodyN<T, const N: usize> {

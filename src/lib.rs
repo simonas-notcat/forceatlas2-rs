@@ -5,7 +5,7 @@ mod layout;
 mod trees;
 mod util;
 
-use forces::{Attraction, Repulsion};
+use forces::{Attraction, Gravity, Repulsion};
 
 pub use layout::{Layout, Settings};
 pub use util::{Coord, Edge, Nodes};
@@ -14,7 +14,7 @@ use num_traits::cast::NumCast;
 
 impl<T: Coord, const N: usize> Layout<T, N>
 where
-	Layout<T, N>: forces::Repulsion<T, N> + forces::Attraction<T, N>,
+	Layout<T, N>: forces::Attraction<T, N> + forces::Gravity<T, N> + forces::Repulsion<T, N>,
 {
 	/// Instantiates an empty layout
 	pub fn empty(weighted: bool, settings: Settings<T>) -> Self {
@@ -33,7 +33,7 @@ where
 			weights: if weighted { Some(Vec::new()) } else { None },
 			bump: parking_lot::Mutex::new(bumpalo::Bump::new()),
 			fn_attraction: Self::choose_attraction(&settings),
-			fn_gravity: forces::choose_gravity(&settings),
+			fn_gravity: Self::choose_gravity(&settings),
 			fn_repulsion: Self::choose_repulsion(&settings),
 			settings,
 		}
@@ -100,7 +100,7 @@ where
 					),
 			)),
 			fn_attraction: Self::choose_attraction(&settings),
-			fn_gravity: forces::choose_gravity(&settings),
+			fn_gravity: Self::choose_gravity(&settings),
 			fn_repulsion: Self::choose_repulsion(&settings),
 			settings,
 		}
@@ -160,7 +160,7 @@ where
 			masses: nodes,
 			weights,
 			fn_attraction: Self::choose_attraction(&settings),
-			fn_gravity: forces::choose_gravity(&settings),
+			fn_gravity: Self::choose_gravity(&settings),
 			fn_repulsion: Self::choose_repulsion(&settings),
 			settings,
 		}
@@ -255,7 +255,7 @@ where
 	pub fn set_settings(&mut self, settings: Settings<T>) {
 		assert!(settings.check());
 		self.fn_attraction = Self::choose_attraction(&settings);
-		self.fn_gravity = forces::choose_gravity(&settings);
+		self.fn_gravity = Self::choose_gravity(&settings);
 		self.fn_repulsion = Self::choose_repulsion(&settings);
 		self.settings = settings;
 	}
