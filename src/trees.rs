@@ -3,7 +3,7 @@ use std::borrow::{Borrow, BorrowMut};
 use num_traits::{real::Real, Num, Zero};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct VecN<T, const N: usize>([T; N]);
+pub struct VecN<T, const N: usize>(pub [T; N]);
 
 impl<T, const N: usize> VecN<T, N> {
 	fn _norm_squared(self) -> T
@@ -155,12 +155,12 @@ impl<T> Vec3<T> {
 	}
 }
 
-pub struct Tree<'a, D, T: 'a, L: 'a, const N: usize> {
+pub struct Tree<'a, D, T: 'a, C, L: 'a, const N: usize> {
 	bump: &'a mut bumpalo::Bump,
-	phantom: std::marker::PhantomData<([T; N], L, &'a D)>,
+	phantom: std::marker::PhantomData<([T; N], C, L, &'a D)>,
 }
 
-impl<'a, T, L, D: Node<T, L, N>, const N: usize> Tree<'a, D, T, L, N> {
+impl<'a, T, C, L, D: Node<T, C, L, N>, const N: usize> Tree<'a, D, T, C, L, N> {
 	/// Create an empty tree
 	pub fn from_bump(bump: &'a mut bumpalo::Bump) -> Self {
 		Tree {
@@ -169,7 +169,7 @@ impl<'a, T, L, D: Node<T, L, N>, const N: usize> Tree<'a, D, T, L, N> {
 		}
 	}
 
-	pub fn new_root<'r>(&'r mut self, pos: (VecN<T, N>, VecN<T, N>)) -> Root<'r, D, T, L, N>
+	pub fn new_root<'r>(&'r mut self, pos: (VecN<T, N>, VecN<T, N>)) -> Root<'r, D, T, C, L, N>
 	where
 		'a: 'r,
 	{
@@ -184,41 +184,50 @@ impl<'a, T, L, D: Node<T, L, N>, const N: usize> Tree<'a, D, T, L, N> {
 	}
 }
 
-pub struct Root<'r, D, T, L, const N: usize> {
+pub struct Root<'r, D, T, C, L, const N: usize> {
 	node: bumpalo::boxed::Box<'r, D>,
-	phantom: std::marker::PhantomData<(T, [L; N])>,
+	phantom: std::marker::PhantomData<(T, C, [L; N])>,
 }
 
-impl<'r, D: Node<T, L, N>, T, L, const N: usize> Root<'r, D, T, L, N> {
+impl<'r, D: Node<T, C, L, N>, T, C, L, const N: usize> Root<'r, D, T, C, L, N> {
 	pub fn add_body(&mut self, new_body: L) {
 		BorrowMut::<D>::borrow_mut(&mut self.node).add_body(new_body)
 	}
-	pub fn apply<C: Clone, F: Fn(VecN<T, N>, VecN<T, N>, T, T, C) -> VecN<T, N>>(
+	pub fn apply<
+		F1: Fn(VecN<T, N>, VecN<T, N>, T, T, C) -> VecN<T, N>,
+		F2: Fn(VecN<T, N>, VecN<T, N>, T, T, C, C) -> VecN<T, N>,
+	>(
 		&self,
 		on: VecN<T, N>,
 		theta: T,
 		custom: C,
-		f: &F,
+		f1: &F1,
+		f2: &F2,
 	) -> VecN<T, N> {
-		Borrow::<D>::borrow(&self.node).apply(on, theta, custom, f)
+		Borrow::<D>::borrow(&self.node).apply(on, theta, custom, f1, f2)
 	}
 }
 
-pub trait Body<T, const N: usize> {
+pub trait Body<T, C, const N: usize> {
 	fn mass(&self) -> T;
 	fn pos(&self) -> VecN<T, N>;
 	fn add_mass(&mut self, mass: T);
+	fn custom(&self) -> C;
 }
 
-pub trait Node<T, L, const N: usize> {
+pub trait Node<T, C, L, const N: usize> {
 	fn new(pos: (VecN<T, N>, VecN<T, N>)) -> Self;
 	fn add_body(&mut self, new_body: L);
-	fn apply<C: Clone, F: Fn(VecN<T, N>, VecN<T, N>, T, T, C) -> VecN<T, N>>(
+	fn apply<
+		F1: Fn(VecN<T, N>, VecN<T, N>, T, T, C) -> VecN<T, N>,
+		F2: Fn(VecN<T, N>, VecN<T, N>, T, T, C, C) -> VecN<T, N>,
+	>(
 		&self,
 		on: VecN<T, N>,
 		theta: T,
 		custom: C,
-		f: &F,
+		f1: &F1,
+		f2: &F2,
 	) -> VecN<T, N>;
 }
 
@@ -239,10 +248,7 @@ pub enum NodeN<T, L, const N: usize, const NP: usize> {
 pub type Node2<T, L> = NodeN<T, L, 2, 4>;
 pub type Node3<T, L> = NodeN<T, L, 3, 8>;
 
-impl<T, L: Body<T, 2>> Node<T, L, 2> for Node2<T, L>
-where
-	T: Real,
-{
+impl<T: Real, C: Clone, L: Body<T, C, 2>> Node<T, C, L, 2> for Node2<T, L> {
 	fn new(pos: (Vec2<T>, Vec2<T>)) -> Self {
 		Node2::Leaf { body: None, pos }
 	}
@@ -318,12 +324,16 @@ where
 			}
 		}
 	}
-	fn apply<C: Clone, F: Fn(Vec2<T>, Vec2<T>, T, T, C) -> Vec2<T>>(
+	fn apply<
+		F1: Fn(Vec2<T>, Vec2<T>, T, T, C) -> Vec2<T>,
+		F2: Fn(Vec2<T>, Vec2<T>, T, T, C, C) -> Vec2<T>,
+	>(
 		&self,
 		on: Vec2<T>,
 		theta: T,
 		custom: C,
-		f: &F,
+		f1: &F1,
+		f2: &F2,
 	) -> Vec2<T> {
 		match self {
 			Node2::Branch {
@@ -338,12 +348,12 @@ where
 				}
 				let dist = on.distance(*center_of_mass);
 				if *width / dist < theta {
-					f(*center_of_mass, on, *mass, dist, custom)
+					f1(*center_of_mass, on, *mass, dist, custom)
 				} else {
-					nodes[0].apply::<C, F>(on, theta, custom.clone(), f)
-						+ nodes[1].apply::<C, F>(on, theta, custom.clone(), f)
-						+ nodes[2].apply::<C, F>(on, theta, custom.clone(), f)
-						+ nodes[3].apply::<C, F>(on, theta, custom.clone(), f)
+					nodes[0].apply::<F1, F2>(on, theta, custom.clone(), f1, f2)
+						+ nodes[1].apply::<F1, F2>(on, theta, custom.clone(), f1, f2)
+						+ nodes[2].apply::<F1, F2>(on, theta, custom.clone(), f1, f2)
+						+ nodes[3].apply::<F1, F2>(on, theta, custom, f1, f2)
 				}
 			}
 			Node2::Leaf { body, .. } => {
@@ -352,7 +362,7 @@ where
 						return Zero::zero();
 					}
 					let dist = on.distance(body.pos());
-					f(body.pos(), on, body.mass(), dist, custom)
+					f2(body.pos(), on, body.mass(), dist, custom, body.custom())
 				} else {
 					Zero::zero()
 				}
@@ -361,10 +371,7 @@ where
 	}
 }
 
-impl<T, L: Body<T, 3>> Node<T, L, 3> for Node3<T, L>
-where
-	T: Real,
-{
+impl<T: Real, C: Clone, L: Body<T, C, 3>> Node<T, C, L, 3> for Node3<T, L> {
 	fn new(pos: (Vec3<T>, Vec3<T>)) -> Self {
 		Node3::Leaf { body: None, pos }
 	}
@@ -476,12 +483,16 @@ where
 			}
 		}
 	}
-	fn apply<C: Clone, F: Fn(Vec3<T>, Vec3<T>, T, T, C) -> Vec3<T>>(
+	fn apply<
+		F1: Fn(Vec3<T>, Vec3<T>, T, T, C) -> Vec3<T>,
+		F2: Fn(Vec3<T>, Vec3<T>, T, T, C, C) -> Vec3<T>,
+	>(
 		&self,
 		on: Vec3<T>,
 		theta: T,
 		custom: C,
-		f: &F,
+		f1: &F1,
+		f2: &F2,
 	) -> Vec3<T> {
 		match self {
 			Node3::Branch {
@@ -496,16 +507,16 @@ where
 				}
 				let dist = on.distance(*center_of_mass);
 				if *width / dist < theta {
-					f(*center_of_mass, on, *mass, dist, custom)
+					f1(*center_of_mass, on, *mass, dist, custom)
 				} else {
-					nodes[0].apply::<C, F>(on, theta, custom.clone(), f)
-						+ nodes[1].apply::<C, F>(on, theta, custom.clone(), f)
-						+ nodes[2].apply::<C, F>(on, theta, custom.clone(), f)
-						+ nodes[3].apply::<C, F>(on, theta, custom.clone(), f)
-						+ nodes[4].apply::<C, F>(on, theta, custom.clone(), f)
-						+ nodes[5].apply::<C, F>(on, theta, custom.clone(), f)
-						+ nodes[6].apply::<C, F>(on, theta, custom.clone(), f)
-						+ nodes[7].apply::<C, F>(on, theta, custom.clone(), f)
+					nodes[0].apply::<F1, F2>(on, theta, custom.clone(), f1, f2)
+						+ nodes[1].apply::<F1, F2>(on, theta, custom.clone(), f1, f2)
+						+ nodes[2].apply::<F1, F2>(on, theta, custom.clone(), f1, f2)
+						+ nodes[3].apply::<F1, F2>(on, theta, custom.clone(), f1, f2)
+						+ nodes[4].apply::<F1, F2>(on, theta, custom.clone(), f1, f2)
+						+ nodes[5].apply::<F1, F2>(on, theta, custom.clone(), f1, f2)
+						+ nodes[6].apply::<F1, F2>(on, theta, custom.clone(), f1, f2)
+						+ nodes[7].apply::<F1, F2>(on, theta, custom, f1, f2)
 				}
 			}
 			Node3::Leaf { body, .. } => {
@@ -514,7 +525,7 @@ where
 						return Zero::zero();
 					}
 					let dist = on.distance(body.pos());
-					f(body.pos(), on, body.mass(), dist, custom)
+					f2(body.pos(), on, body.mass(), dist, custom, body.custom())
 				} else {
 					Zero::zero()
 				}

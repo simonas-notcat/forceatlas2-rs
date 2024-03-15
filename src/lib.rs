@@ -96,8 +96,9 @@ where
 			weights,
 			bump: parking_lot::Mutex::new(bumpalo::Bump::with_capacity(
 				(nb + 4 * (nb.checked_ilog2().unwrap_or(0) as usize + 1))
-					* std::mem::size_of::<trees::NodeN<T, forces::repulsion::NodeBodyN<T, N>, N, 1>>(
-					),
+					* std::mem::size_of::<
+						trees::NodeN<T, forces::repulsion::NodeBodyN<T, T, N>, N, 1>,
+					>(),
 			)),
 			fn_attraction: Self::choose_attraction(&settings),
 			fn_gravity: Self::choose_gravity(&settings),
@@ -149,8 +150,9 @@ where
 		Self {
 			bump: parking_lot::Mutex::new(bumpalo::Bump::with_capacity(
 				(nodes.len() + 4 * (nodes.len().checked_ilog2().unwrap_or(0) as usize + 1))
-					* std::mem::size_of::<trees::NodeN<T, forces::repulsion::NodeBodyN<T, N>, N, 1>>(
-					),
+					* std::mem::size_of::<
+						trees::NodeN<T, forces::repulsion::NodeBodyN<T, T, N>, N, 1>,
+					>(),
 			)),
 			edges,
 			sizes,

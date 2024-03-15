@@ -73,7 +73,7 @@ impl<T: Coord + Send + Sync, const N: usize> Gravity<T, N> for Layout<T, N> {
 impl<T: Coord + Send + Sync> Repulsion<T, 2> for Layout<T, 2> {
 	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T, 2>) {
 		if settings.prevent_overlapping.is_some() {
-			todo!()
+			repulsion::apply_repulsion_2d_po
 		} else {
 			repulsion::apply_repulsion_2d
 		}
@@ -83,7 +83,7 @@ impl<T: Coord + Send + Sync> Repulsion<T, 2> for Layout<T, 2> {
 impl<T: Coord + Send + Sync> Repulsion<T, 3> for Layout<T, 3> {
 	fn choose_repulsion(settings: &Settings<T>) -> fn(&mut Layout<T, 3>) {
 		if settings.prevent_overlapping.is_some() {
-			todo!()
+			repulsion::apply_repulsion_3d_po
 		} else {
 			repulsion::apply_repulsion_3d
 		}
