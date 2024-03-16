@@ -195,24 +195,24 @@ pub fn draw_graph(
 		.zip(IntoIterator::into_iter([bg_color.0, bg_color.1, bg_color.2]).cycle())
 		.for_each(|(px, bg)| *px = bg);
 
-	let mut iter = layout.1.points.iter();
-	let mut min = *iter.next().unwrap();
+	let mut iter = layout.1.nodes.iter();
+	let mut min = iter.next().unwrap().pos;
 	let mut max = min;
-	for pos in iter {
-		if pos[0] < min[0] {
-			min[0] = pos[0];
+	for node in iter {
+		if node.pos[0] < min[0] {
+			min[0] = node.pos[0];
 		}
-		if pos[1] < min[1] {
-			min[1] = pos[1];
+		if node.pos[1] < min[1] {
+			min[1] = node.pos[1];
 		}
-		if pos[0] > max[0] {
-			max[0] = pos[0];
+		if node.pos[0] > max[0] {
+			max[0] = node.pos[0];
 		}
-		if pos[1] > max[1] {
-			max[1] = pos[1];
+		if node.pos[1] > max[1] {
+			max[1] = node.pos[1];
 		}
 	}
-	println!("{:?} {:?}", min, max);
+	// println!("{:?} {:?}", min, max);
 	let graph_size = (max[0] - min[0], max[1] - min[1]);
 	let factor = {
 		let factors = (size.0 as T / graph_size.0, size.1 as T / graph_size.1);
@@ -233,7 +233,7 @@ pub fn draw_graph(
 				rowstride,
 				edge_color,
 				{
-					let pos = layout.1.points[*h1];
+					let pos = layout.1.nodes[*h1].pos;
 					unsafe {
 						(
 							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
@@ -242,7 +242,7 @@ pub fn draw_graph(
 					}
 				},
 				{
-					let pos = layout.1.points[*h2];
+					let pos = layout.1.nodes[*h2].pos;
 					unsafe {
 						(
 							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
@@ -255,7 +255,7 @@ pub fn draw_graph(
 	}
 
 	if draw_nodes {
-		for pos in layout.1.points.iter() {
+		for node in layout.1.nodes.iter() {
 			draw_disk(
 				pixels,
 				size,
@@ -264,8 +264,8 @@ pub fn draw_graph(
 				{
 					unsafe {
 						(
-							((pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
-							((pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
+							((node.pos[0] - min[0]) * factor).to_int_unchecked::<i32>(),
+							((node.pos[1] - min[1]) * factor).to_int_unchecked::<i32>(),
 						)
 					}
 				},
@@ -294,8 +294,8 @@ pub fn draw_graph_3d(
 		.for_each(|(px, bg)| *px = bg);
 
 	let mut l = 1.0;
-	for pos in layout.2.points.iter() {
-		let li = (pos[1] * 1.25).max(pos[0] * 1.25) + pos[2];
+	for node in layout.2.nodes.iter() {
+		let li = (node.pos[1] * 1.25).max(node.pos[0] * 1.25) + node.pos[2];
 		if li > l {
 			l = li;
 		}
@@ -324,8 +324,8 @@ pub fn draw_graph_3d(
 
 	if draw_edges {
 		for (h1, h2) in layout.2.edges.iter() {
-			let p1 = layout.2.points[*h1];
-			let p2 = layout.2.points[*h2];
+			let p1 = layout.2.nodes[*h1].pos;
+			let p2 = layout.2.nodes[*h2].pos;
 			let proj = camera.world_to_pixel(&cam_geom::Points::new(unsafe {
 				Matrix2x3::new(
 					*p1.get_unchecked(0) as f32,

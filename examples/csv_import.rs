@@ -42,14 +42,12 @@ fn main() {
 
 	eprintln!("Nodes: {}", nodes);
 
-	let mut layout = Layout::<f32, 2>::from_graph(
+	let mut layout = Layout::<f32, 2>::from_graph_with_degree_mass(
 		edges,
-		Nodes::Degree(nodes),
 		None,
-		None,
+		(0..nodes).map(|_| 1.0),
 		Settings {
 			theta: 0.5,
-			dissuade_hubs: false,
 			ka: 0.01,
 			kg: 0.001,
 			kr: 0.002,
@@ -65,7 +63,7 @@ fn main() {
 		layout.iteration();
 	}
 
-	for node in layout.points {
-		println!("{}\t{}", node[0], node[1]);
+	for node in layout.nodes {
+		println!("{}\t{}", node.pos[0], node.pos[1]);
 	}
 }

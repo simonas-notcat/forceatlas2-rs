@@ -7,10 +7,8 @@ mod util;
 
 use forces::{Attraction, Gravity, Repulsion};
 
-pub use layout::{Layout, Settings};
+pub use layout::{Layout, Node, Settings};
 pub use util::{Coord, Edge, Nodes};
-
-use num_traits::cast::NumCast;
 
 impl<T: Coord, const N: usize> Layout<T, N>
 where
@@ -21,15 +19,7 @@ where
 		assert!(settings.check());
 		Self {
 			edges: Vec::new(),
-			points: Vec::new(),
-			masses: Vec::new(),
-			sizes: if settings.prevent_overlapping.is_some() {
-				Some(Vec::new())
-			} else {
-				None
-			},
-			speeds: Vec::new(),
-			old_speeds: Vec::new(),
+			nodes: Vec::new(),
 			weights: if weighted { Some(Vec::new()) } else { None },
 			bump: parking_lot::Mutex::new(bumpalo::Bump::new()),
 			fn_attraction: Self::choose_attraction(&settings),
@@ -41,10 +31,74 @@ where
 
 	/// Create a randomly positioned layout from an undirected graph
 	#[cfg(feature = "rand")]
-	pub fn from_graph(
+	pub fn from_graph_with_degree_mass<I: IntoIterator<Item = T>>(
 		mut edges: Vec<Edge>,
-		nodes: Nodes<T>,
-		sizes: Option<Vec<T>>,
+		weights: Option<Vec<T>>,
+		sizes: I,
+		settings: Settings<T>,
+	) -> Self
+	where
+		rand::distributions::Standard: rand::distributions::Distribution<T>,
+		T: rand::distributions::uniform::SampleUniform,
+	{
+		assert!(settings.check());
+		if let Some(weights) = &weights {
+			assert_eq!(weights.len(), edges.len());
+		}
+
+		let mut nodes: Vec<Node<T, N>> = {
+			let mut rng = rand::thread_rng();
+			sizes
+				.into_iter()
+				.map(|size| Node {
+					pos: util::sample_unit_ncube(&mut rng),
+					mass: T::zero(),
+					speed: [T::zero(); N],
+					old_speed: [T::zero(); N],
+					size,
+				})
+				.collect()
+		};
+
+		for edge in edges.iter_mut() {
+			nodes
+				.get_mut(edge.0)
+				.expect("Node index out of bound in edge list")
+				.mass += T::one();
+			nodes
+				.get_mut(edge.1)
+				.expect("Node index out of bound in edge list")
+				.mass += T::one();
+			if edge.0 > edge.1 {
+				*edge = (edge.1, edge.0);
+			}
+		}
+
+		let nb = nodes.len() * N;
+		Self {
+			edges,
+			nodes,
+			weights,
+			bump: parking_lot::Mutex::new(bumpalo::Bump::with_capacity(
+				(nb + 4 * (nb.checked_ilog2().unwrap_or(0) as usize + 1))
+					* std::mem::size_of::<
+						trees::NodeN<T, forces::repulsion::NodeBodyN<T, T, N>, N, 1>,
+					>(),
+			)),
+			fn_attraction: Self::choose_attraction(&settings),
+			fn_gravity: Self::choose_gravity(&settings),
+			fn_repulsion: Self::choose_repulsion(&settings),
+			settings,
+		}
+	}
+
+	/// Create a randomly positioned layout from an undirected graph
+	///
+	/// `masses_sizes`'s elements are `(mass, size)`.
+	#[cfg(feature = "rand")]
+	pub fn from_graph_with_masses<I: IntoIterator<Item = (T, T)>>(
+		mut edges: Vec<Edge>,
+		masses_sizes: I,
 		weights: Option<Vec<T>>,
 		settings: Settings<T>,
 	) -> Self
@@ -57,28 +111,24 @@ where
 			assert_eq!(weights.len(), edges.len());
 		}
 
-		let nodes = match nodes {
-			Nodes::Degree(nb_nodes) => {
-				let mut degrees: Vec<usize> = vec![0; nb_nodes];
-				for (n1, n2) in edges.iter() {
-					*degrees.get_mut(*n1).unwrap() += 1;
-					*degrees.get_mut(*n2).unwrap() += 1;
-				}
-				degrees
-					.into_iter()
-					.map(|degree| <T as NumCast>::from(degree).unwrap())
-					.collect()
-			}
-			Nodes::Mass(masses) => masses,
+		let nodes: Vec<Node<T, N>> = {
+			let mut rng = rand::thread_rng();
+			masses_sizes
+				.into_iter()
+				.map(|(mass, size)| Node {
+					pos: util::sample_unit_ncube(&mut rng),
+					mass,
+					speed: [T::zero(); N],
+					old_speed: [T::zero(); N],
+					size,
+				})
+				.collect()
 		};
-
-		if let Some(sizes) = &sizes {
-			assert_eq!(sizes.len(), nodes.len());
-		} else {
-			assert!(settings.prevent_overlapping.is_none());
-		}
-
 		for edge in edges.iter_mut() {
+			assert!(
+				edge.0 < nodes.len() && edge.1 < nodes.len(),
+				"Node index out of bound in edge list"
+			);
 			if edge.0 > edge.1 {
 				*edge = (edge.1, edge.0);
 			}
@@ -87,17 +137,8 @@ where
 		let nb = nodes.len() * N;
 		Self {
 			edges,
-			points: {
-				let mut rng = rand::thread_rng();
-				(0..nodes.len())
-					.map(|_| util::sample_unit_ncube(&mut rng))
-					.collect()
-			},
-			masses: nodes,
-			sizes,
-			speeds: (0..nb).map(|_| [T::zero(); N]).collect(),
-			old_speeds: (0..nb).map(|_| [T::zero(); N]).collect(),
 			weights,
+			nodes,
 			bump: parking_lot::Mutex::new(bumpalo::Bump::with_capacity(
 				(nb + 4 * (nb.checked_ilog2().unwrap_or(0) as usize + 1))
 					* std::mem::size_of::<
@@ -114,9 +155,7 @@ where
 	/// Create a layout from an undirected graph, with initial positions
 	pub fn from_position_graph(
 		mut edges: Vec<Edge>,
-		nodes: Nodes<T>,
-		sizes: Option<Vec<T>>,
-		positions: Vec<[T; N]>,
+		nodes: Vec<Node<T, N>>,
 		weights: Option<Vec<T>>,
 		settings: Settings<T>,
 	) -> Self {
@@ -124,29 +163,6 @@ where
 		if let Some(weights) = &weights {
 			assert_eq!(weights.len(), edges.len());
 		}
-
-		let nodes = match nodes {
-			Nodes::Degree(nb_nodes) => {
-				let mut degrees: Vec<usize> = vec![0; nb_nodes];
-				for (n1, n2) in edges.iter() {
-					*degrees.get_mut(*n1).unwrap() += 1;
-					*degrees.get_mut(*n2).unwrap() += 1;
-				}
-				degrees
-					.into_iter()
-					.map(|degree| <T as NumCast>::from(degree).unwrap())
-					.collect()
-			}
-			Nodes::Mass(masses) => masses,
-		};
-
-		if let Some(sizes) = &sizes {
-			assert_eq!(sizes.len(), nodes.len());
-		} else {
-			assert!(settings.prevent_overlapping.is_none());
-		}
-
-		assert_eq!(positions.len(), nodes.len());
 
 		for edge in edges.iter_mut() {
 			if edge.0 > edge.1 {
@@ -162,11 +178,7 @@ where
 					>(),
 			)),
 			edges,
-			sizes,
-			points: positions,
-			speeds: (0..nodes.len()).map(|_| [T::zero(); N]).collect(),
-			old_speeds: (0..nodes.len()).map(|_| [T::zero(); N]).collect(),
-			masses: nodes,
+			nodes,
 			weights,
 			fn_attraction: Self::choose_attraction(&settings),
 			fn_gravity: Self::choose_gravity(&settings),
@@ -180,36 +192,10 @@ where
 	}
 
 	/// Add nodes to the graph
-	/// 
+	///
 	/// New node indices in edges start at the current number of nodes.
-	pub fn add_nodes(
-		&mut self,
-		edges: &[Edge],
-		nodes: Nodes<T>,
-		positions: &[[T; N]],
-		weights: Option<&[T]>,
-	) {
-		let new_nodes;
-		match nodes {
-			Nodes::Degree(nb_nodes) => {
-				new_nodes = nb_nodes;
-				self.masses.extend((0..nb_nodes).map(|_| T::zero()));
-				for (n1, n2) in edges.iter() {
-					self.masses[*n1] += T::one();
-					self.masses[*n2] += T::one();
-				}
-			}
-			Nodes::Mass(masses) => {
-				new_nodes = masses.len();
-				self.masses.extend_from_slice(&masses);
-			}
-		}
-		assert_eq!(positions.len(), new_nodes);
-		self.points.extend_from_slice(positions);
-		self.speeds
-			.extend((0..positions.len()).map(|_| [T::zero(); N]));
-		self.old_speeds
-			.extend((0..positions.len()).map(|_| [T::zero(); N]));
+	pub fn add_nodes(&mut self, edges: &[Edge], nodes: &[Node<T, N>], weights: Option<&[T]>) {
+		self.nodes.extend_from_slice(nodes);
 		self.edges.extend(
 			edges
 				.iter()
@@ -237,10 +223,7 @@ where
 	///
 	/// Assumes it has a null degree (if not, next iteration will panic)
 	pub fn remove_node(&mut self, node: usize) {
-		self.points.remove(node);
-		self.masses.remove(node);
-		self.speeds.remove(node);
-		self.old_speeds.remove(node);
+		self.nodes.remove(node);
 	}
 
 	/// Remove a node's incident edges
@@ -285,9 +268,9 @@ where
 	}
 
 	fn init_iteration(&mut self) {
-		for (speed, old_speed) in self.speeds.iter_mut().zip(self.old_speeds.iter_mut()) {
-			*old_speed = *speed;
-			*speed = [T::zero(); N];
+		for node in self.nodes.iter_mut() {
+			node.old_speed = node.speed;
+			node.speed = [T::zero(); N];
 		}
 	}
 
@@ -304,29 +287,27 @@ where
 	}
 
 	fn apply_forces(&mut self) {
-		for ((pos, speed), old_speed) in self
-			.points
-			.iter_mut()
-			.zip(self.speeds.iter_mut())
-			.zip(self.old_speeds.iter())
-		{
-			let swinging = speed
+		for node in self.nodes.iter_mut() {
+			let swinging = node
+				.speed
 				.iter()
-				.zip(old_speed.iter())
+				.zip(node.old_speed.iter())
 				.map(|(s, old_s)| (*s - *old_s) * (*s - *old_s))
 				.sum::<T>()
 				.sqrt();
-			let traction = speed
+			let traction = node
+				.speed
 				.iter()
-				.zip(old_speed.iter())
+				.zip(node.old_speed.iter())
 				.map(|(s, old_s)| (*s + *old_s) * (*s + *old_s))
 				.sum::<T>()
 				.sqrt();
 
 			let f = traction.ln_1p() / (swinging.sqrt() + T::one()) * self.settings.speed;
 
-			pos.iter_mut()
-				.zip(speed.iter_mut())
+			node.pos
+				.iter_mut()
+				.zip(node.speed.iter_mut())
 				.for_each(|(pos, speed)| {
 					*pos += *speed * f;
 				});
@@ -341,11 +322,10 @@ mod tests {
 	#[cfg(feature = "rand")]
 	#[test]
 	fn test_global() {
-		let mut layout = Layout::<f64, 2>::from_graph(
+		let mut layout = Layout::<f64, 2>::from_graph_with_degree_mass(
 			vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 4)],
-			Nodes::Degree(5),
 			None,
-			None,
+			[1.0; 5],
 			Settings::default(),
 		);
 
@@ -353,35 +333,50 @@ mod tests {
 			layout.iteration();
 		}
 
-		layout.points.iter().for_each(|pos| println!("{:?}", pos));
+		layout
+			.nodes
+			.iter()
+			.for_each(|node| println!("{:?}", node.pos));
 	}
 
 	#[test]
 	fn test_init_iteration() {
 		let mut layout = Layout::<f64, 2>::from_position_graph(
 			vec![(0, 1)],
-			Nodes::Degree(2),
-			None,
-			vec![[-1.0, -1.0], [1.0, 1.0]],
+			vec![
+				Node {
+					pos: [-1.0, -1.0],
+					speed: [12.34, 56.78],
+					..Default::default()
+				},
+				Node {
+					pos: [1.0, 1.0],
+					speed: [42.0, 666.0],
+					..Default::default()
+				},
+			],
 			None,
 			Settings::default(),
 		);
-		layout
-			.speeds
-			.iter_mut()
-			.enumerate()
-			.for_each(|(i, s)| *s = [i as f64, i as f64]);
 		layout.init_iteration();
-		assert_eq!(&layout.speeds, &[[0.0, 0.0], [0.0, 0.0]]);
+		assert_eq!(layout.nodes[0].speed, [0.0, 0.0]);
+		assert_eq!(layout.nodes[1].speed, [0.0, 0.0]);
 	}
 
 	#[test]
 	fn test_forces() {
 		let mut layout = Layout::<f64, 2>::from_position_graph(
 			vec![(0, 1)],
-			Nodes::Degree(2),
-			None,
-			vec![[-2.0, -2.0], [1.0, 2.0]],
+			vec![
+				Node {
+					pos: [-2.0, -2.0],
+					..Default::default()
+				},
+				Node {
+					pos: [1.0, 2.0],
+					..Default::default()
+				},
+			],
 			None,
 			Settings::default(),
 		);
@@ -389,8 +384,8 @@ mod tests {
 		layout.init_iteration();
 		layout.apply_attraction();
 
-		let speed_1 = dbg!(layout.speeds[0]);
-		let speed_2 = dbg!(layout.speeds[1]);
+		let speed_1 = dbg!(layout.nodes[0].speed);
+		let speed_2 = dbg!(layout.nodes[1].speed);
 
 		assert!(speed_1[0] > 0.0);
 		assert!(speed_1[1] > 0.0);
@@ -404,8 +399,8 @@ mod tests {
 		layout.init_iteration();
 		layout.apply_repulsion();
 
-		let speed_1 = dbg!(layout.speeds[0]);
-		let speed_2 = dbg!(layout.speeds[1]);
+		let speed_1 = dbg!(layout.nodes[0].speed);
+		let speed_2 = dbg!(layout.nodes[1].speed);
 
 		assert!(speed_1[0] < 0.0);
 		assert!(speed_1[1] < 0.0);
@@ -419,8 +414,8 @@ mod tests {
 		layout.init_iteration();
 		layout.apply_gravity();
 
-		let speed_1 = dbg!(layout.speeds[0]);
-		let speed_2 = dbg!(layout.speeds[1]);
+		let speed_1 = dbg!(layout.nodes[0].speed);
+		let speed_2 = dbg!(layout.nodes[1].speed);
 
 		assert!(speed_1[0] > 0.0);
 		assert!(speed_1[1] > 0.0);
@@ -432,12 +427,22 @@ mod tests {
 	fn test_convergence() {
 		let mut layout = Layout::<f64, 2>::from_position_graph(
 			vec![(0, 1), (1, 2)],
-			Nodes::Degree(3),
-			None,
-			vec![[-1.1, -1.0], [0.0, 0.0], [1.0, 1.0]],
+			vec![
+				Node {
+					pos: [-1.1, -1.0],
+					..Default::default()
+				},
+				Node {
+					pos: [0.0, 0.0],
+					..Default::default()
+				},
+				Node {
+					pos: [1.0, 1.0],
+					..Default::default()
+				},
+			],
 			None,
 			Settings {
-				dissuade_hubs: false,
 				ka: 0.5,
 				kg: 0.01,
 				kr: 0.01,
@@ -453,18 +458,14 @@ mod tests {
 			println!("new iteration");
 			layout.init_iteration();
 			layout.apply_attraction();
-			println!("{:?}", layout.speeds);
 			layout.init_iteration();
 			layout.apply_repulsion();
-			println!("{:?}", layout.speeds);
 			layout.init_iteration();
 			layout.apply_gravity();
-			println!("{:?}", layout.speeds);
 			layout.apply_forces();
 
-			dbg!(&layout.points);
-			let point_1 = layout.points[0];
-			let point_2 = layout.points[1];
+			let point_1 = layout.nodes[0].pos;
+			let point_2 = layout.nodes[1].pos;
 			dbg!(((point_2[0] - point_1[0]).powi(2) + (point_2[1] - point_1[1]).powi(2)).sqrt());
 		}
 	}
@@ -473,12 +474,25 @@ mod tests {
 	fn test_convergence_po() {
 		let mut layout = Layout::<f64, 2>::from_position_graph(
 			vec![(0, 1), (1, 2)],
-			Nodes::Degree(3),
-			Some(vec![1.0, 5.0, 1.0]),
-			vec![[-1.1, -1.0], [0.0, 0.0], [1.0, 1.0]],
+			vec![
+				Node {
+					pos: [-1.1, -1.0],
+					size: 1.0,
+					..Default::default()
+				},
+				Node {
+					pos: [0.0, 0.0],
+					size: 5.0,
+					..Default::default()
+				},
+				Node {
+					pos: [1.0, 1.0],
+					size: 1.0,
+					..Default::default()
+				},
+			],
 			None,
 			Settings {
-				dissuade_hubs: false,
 				ka: 0.5,
 				kg: 0.01,
 				kr: 0.01,
@@ -494,18 +508,14 @@ mod tests {
 			println!("new iteration");
 			layout.init_iteration();
 			layout.apply_attraction();
-			println!("{:?}", layout.speeds);
 			layout.init_iteration();
 			layout.apply_repulsion();
-			println!("{:?}", layout.speeds);
 			layout.init_iteration();
 			layout.apply_gravity();
-			println!("{:?}", layout.speeds);
 			layout.apply_forces();
 
-			dbg!(&layout.points);
-			let point_1 = layout.points[0];
-			let point_2 = layout.points[1];
+			let point_1 = layout.nodes[0].pos;
+			let point_2 = layout.nodes[1].pos;
 			dbg!(((point_2[0] - point_1[0]).powi(2) + (point_2[1] - point_1[1]).powi(2)).sqrt());
 		}
 	}

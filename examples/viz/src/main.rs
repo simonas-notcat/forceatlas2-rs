@@ -51,7 +51,6 @@ fn main() {
 
 	let settings = Settings {
 		theta: 0.5,
-		dissuade_hubs: false,
 		ka: 1.0,
 		kg: 1.0,
 		kr: 1.0,
@@ -63,18 +62,16 @@ fn main() {
 
 	let layout = Arc::new(RwLock::new((
 		false,
-		Layout::<T, 2>::from_graph(
+		Layout::<T, 2>::from_graph_with_degree_mass(
 			edges.clone(),
-			Nodes::Degree(nodes),
-			None,
 			Some(weights.clone()),
+			(0..nodes).map(|_| 1.0),
 			settings.clone(),
 		),
-		Layout::<T, 3>::from_graph(
+		Layout::<T, 3>::from_graph_with_degree_mass(
 			edges,
-			Nodes::Degree(nodes),
-			None,
 			Some(weights),
+			(0..nodes).map(|_| 1.0),
 			settings.clone(),
 		),
 	)));

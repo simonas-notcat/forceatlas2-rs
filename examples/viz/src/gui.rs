@@ -128,7 +128,7 @@ fn build_ui(
 		let layout = layout.read();
 		let nb_nodes_disp: gtk::Label = builder.object("nb_nodes").unwrap();
 		let nb_edges_disp: gtk::Label = builder.object("nb_edges").unwrap();
-		nb_nodes_disp.set_text(&layout.1.masses.len().to_string());
+		nb_nodes_disp.set_text(&layout.1.nodes.len().to_string());
 		nb_edges_disp.set_text(&layout.1.edges.len().to_string());
 	}
 
@@ -255,18 +255,17 @@ fn build_ui(
 		move |_| {
 			let mut rng = rand::thread_rng();
 			let mut layout = layout.write();
-			layout.1.old_speeds.fill([0.0; 2]);
-			layout.2.old_speeds.fill([0.0; 3]);
-			layout
-				.1
-				.points
-				.fill_with(|| [rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0)]);
-			layout.2.points.fill_with(|| {
-				[
+			layout.1.nodes.iter_mut().for_each(|node| {
+				node.old_speed = [0.0; 2];
+				node.pos = [rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0)];
+			});
+			layout.2.nodes.iter_mut().for_each(|node| {
+				node.old_speed = [0.0; 3];
+				node.pos = [
 					rng.gen_range(-1.0..1.0),
 					rng.gen_range(-1.0..1.0),
 					rng.gen_range(-1.0..1.0),
-				]
+				];
 			});
 			tx.write().redraw = true;
 			*nb_iters.write() = 0;

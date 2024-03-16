@@ -1,15 +1,13 @@
 use crate::util::*;
 
 /// Settings for the graph layout
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Settings<T> {
 	/// Precision setting for Barnes-Hut computation
 	///
 	/// Must be in `(0.0..1.0)`. `0.0` is accurate and slow, `1.0` is unaccurate and fast.
 	/// Default is `0.5`.
 	pub theta: T,
-	/// Move hubs (high degree nodes) to the center
-	pub dissuade_hubs: bool,
 	/// Attraction coefficient
 	pub ka: T,
 	/// Gravity coefficient
@@ -34,7 +32,6 @@ impl<T: Coord> Default for Settings<T> {
 	fn default() -> Self {
 		Self {
 			theta: T::one() / (T::one() + T::one()),
-			dissuade_hubs: false,
 			ka: T::one(),
 			kg: T::one(),
 			kr: T::one(),
@@ -53,20 +50,32 @@ impl<T: Coord> Settings<T> {
 	}
 }
 
+#[derive(Clone, Debug)]
+pub struct Node<T, const N: usize> {
+	pub pos: [T; N],
+	pub speed: [T; N],
+	pub old_speed: [T; N],
+	pub size: T,
+	pub mass: T,
+}
+
+impl<T: Coord, const N: usize> Default for Node<T, N> {
+	fn default() -> Self {
+		Node {
+			pos: [T::zero(); N],
+			speed: [T::zero(); N],
+			old_speed: [T::zero(); N],
+			size: T::one(),
+			mass: T::one(),
+		}
+	}
+}
+
 /// Graph spatialization layout
 pub struct Layout<T, const N: usize> {
+	pub nodes: Vec<Node<T, N>>,
 	/// Graph edges (undirected)
 	pub edges: Vec<Edge>,
-	/// Node masses
-	pub masses: Vec<T>,
-	/// Node positions
-	pub points: Vec<[T; N]>,
-	/// Node sizes (only used if prevent overlapping is enabled)
-	pub sizes: Option<Vec<T>>,
-	/// Node speeds
-	pub speeds: Vec<[T; N]>,
-	/// Node speeds at previous iteration
-	pub old_speeds: Vec<[T; N]>,
 	/// Node weights
 	pub weights: Option<Vec<T>>,
 	// Mutex needed here for Layout to be Sync

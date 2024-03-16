@@ -27,31 +27,15 @@ impl<T: Coord, const N: usize> Attraction<T, N> for Layout<T, N> {
 	fn choose_attraction(settings: &Settings<T>) -> fn(&mut Layout<T, N>) {
 		if settings.prevent_overlapping.is_some() {
 			if settings.lin_log {
-				if settings.dissuade_hubs {
-					attraction::apply_attraction_dh_log_po
-				} else {
-					attraction::apply_attraction_log_po
-				}
+				attraction::apply_attraction_log_po
 			} else {
-				if settings.dissuade_hubs {
-					attraction::apply_attraction_dh_po
-				} else {
-					attraction::apply_attraction_po
-				}
+				attraction::apply_attraction_po
 			}
 		} else {
 			if settings.lin_log {
-				if settings.dissuade_hubs {
-					attraction::apply_attraction_dh_log
-				} else {
-					attraction::apply_attraction_log
-				}
+				attraction::apply_attraction_log
 			} else {
-				if settings.dissuade_hubs {
-					attraction::apply_attraction_dh
-				} else {
-					attraction::apply_attraction
-				}
+				attraction::apply_attraction
 			}
 		}
 	}

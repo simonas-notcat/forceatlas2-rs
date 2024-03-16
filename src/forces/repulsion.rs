@@ -1,6 +1,6 @@
 use crate::{
 	layout::*,
-	trees::{Body, Vec2, Vec3, VecN},
+	trees::{Body, VecN},
 	util::*,
 };
 
@@ -34,21 +34,18 @@ impl<T: Coord, C: Copy, const N: usize> Body<T, C, N> for NodeBodyN<T, C, N> {
 }
 
 pub fn apply_repulsion_2d<T: Coord + Send + Sync>(layout: &mut Layout<T, 2>) {
-	let mut points_iter = layout.points.iter();
-	let Some(point) = points_iter.next() else {
+	let mut nodes_iter = layout.nodes.iter();
+	let Some(first_node) = nodes_iter.next() else {
 		return;
 	};
-	let (mut min_x, mut min_y, mut max_x, mut max_y) = (point[0], point[1], point[0], point[1]);
-	for point in points_iter {
-		if point[0] < min_x {
-			min_x = point[0];
-		} else if point[0] > max_x {
-			max_x = point[0];
-		}
-		if point[1] < min_y {
-			min_y = point[1];
-		} else if point[1] > max_y {
-			max_y = point[1];
+	let (mut min_pos, mut max_pos) = (first_node.pos, first_node.pos);
+	for Node { pos, .. } in nodes_iter {
+		for ((min, max), val) in min_pos.iter_mut().zip(max_pos.iter_mut()).zip(pos.iter()) {
+			if val < min {
+				*min = *val;
+			} else if val > max {
+				*max = *val;
+			}
 		}
 	}
 
@@ -60,12 +57,12 @@ pub fn apply_repulsion_2d<T: Coord + Send + Sync>(layout: &mut Layout<T, 2>) {
 		NodeBody2<T, ()>,
 		2,
 	>::from_bump(&mut bump);
-	let mut root = tree.new_root((Vec2::new(min_x, min_y), Vec2::new(max_x, max_y)));
+	let mut root = tree.new_root((VecN(min_pos), VecN(max_pos)));
 
-	for (pos, mass) in layout.points.iter().zip(layout.masses.iter()) {
+	for node in layout.nodes.iter() {
 		root.add_body(NodeBody2 {
-			pos: VecN(*pos),
-			mass: *mass + T::one(),
+			pos: VecN(node.pos),
+			mass: node.mass + T::one(),
 			custom: (),
 		});
 	}
@@ -75,39 +72,30 @@ pub fn apply_repulsion_2d<T: Coord + Send + Sync>(layout: &mut Layout<T, 2>) {
 
 	let f1 = |bb, b, mm, d, _| (bb - b) * mm / d;
 	let f2 = |bb, b, mm, d, _, _| (bb - b) * mm / d;
-	layout
-		.points
-		.par_iter()
-		.zip(layout.speeds.par_iter_mut())
-		.zip(layout.masses.par_iter())
-		.for_each(|((particle, speed), mass)| {
-			let f = root.apply(VecN(*particle), theta, (), &f1, &f2) * kr * (*mass + T::one());
-			speed[0] -= f.x();
-			speed[1] -= f.y();
-		});
+	layout.nodes.par_iter_mut().for_each(|node| {
+		let f = root.apply(VecN(node.pos), theta, (), &f1, &f2) * kr * (node.mass + T::one());
+		node.speed[0] -= f.x();
+		node.speed[1] -= f.y();
+	});
 	std::mem::drop(root);
 	tree.clear();
 }
 
 pub fn apply_repulsion_2d_po<T: Coord + Send + Sync>(layout: &mut Layout<T, 2>) {
 	let mut kr_prime = layout.settings.prevent_overlapping.unwrap();
-	let sizes = layout.sizes.as_ref().unwrap();
 
-	let mut points_iter = layout.points.iter();
-	let Some(point) = points_iter.next() else {
+	let mut nodes_iter = layout.nodes.iter();
+	let Some(first_node) = nodes_iter.next() else {
 		return;
 	};
-	let (mut min_x, mut min_y, mut max_x, mut max_y) = (point[0], point[1], point[0], point[1]);
-	for point in points_iter {
-		if point[0] < min_x {
-			min_x = point[0];
-		} else if point[0] > max_x {
-			max_x = point[0];
-		}
-		if point[1] < min_y {
-			min_y = point[1];
-		} else if point[1] > max_y {
-			max_y = point[1];
+	let (mut min_pos, mut max_pos) = (first_node.pos, first_node.pos);
+	for Node { pos, .. } in nodes_iter {
+		for ((min, max), val) in min_pos.iter_mut().zip(max_pos.iter_mut()).zip(pos.iter()) {
+			if val < min {
+				*min = *val;
+			} else if val > max {
+				*max = *val;
+			}
 		}
 	}
 
@@ -119,18 +107,13 @@ pub fn apply_repulsion_2d_po<T: Coord + Send + Sync>(layout: &mut Layout<T, 2>) 
 		NodeBody2<T, T>,
 		2,
 	>::from_bump(&mut bump);
-	let mut root = tree.new_root((Vec2::new(min_x, min_y), Vec2::new(max_x, max_y)));
+	let mut root = tree.new_root((VecN(min_pos), VecN(max_pos)));
 
-	for ((pos, mass), size) in layout
-		.points
-		.iter()
-		.zip(layout.masses.iter())
-		.zip(sizes.iter())
-	{
+	for node in layout.nodes.iter() {
 		root.add_body(NodeBody2 {
-			pos: VecN(*pos),
-			mass: *mass + T::one(),
-			custom: *size,
+			pos: VecN(node.pos),
+			mass: node.mass + T::one(),
+			custom: node.size,
 		});
 	}
 
@@ -147,43 +130,29 @@ pub fn apply_repulsion_2d_po<T: Coord + Send + Sync>(layout: &mut Layout<T, 2>) 
 			(bb - b) * mm * kr_prime
 		}
 	};
-	layout
-		.points
-		.par_iter()
-		.zip(layout.speeds.par_iter_mut())
-		.zip(layout.masses.par_iter())
-		.zip(sizes.par_iter())
-		.for_each(|(((particle, speed), mass), size)| {
-			let f = root.apply(VecN(*particle), theta, *size, &f1, &f2) * kr * (*mass + T::one());
-			speed[0] -= f.x();
-			speed[1] -= f.y();
-		});
+	layout.nodes.par_iter_mut().for_each(|node| {
+		let f =
+			root.apply(VecN(node.pos), theta, node.size, &f1, &f2) * kr * (node.mass + T::one());
+		node.speed[0] -= f.x();
+		node.speed[1] -= f.y();
+	});
 	std::mem::drop(root);
 	tree.clear();
 }
 
 pub fn apply_repulsion_3d<T: Coord + Send + Sync>(layout: &mut Layout<T, 3>) {
-	let mut points_iter = layout.points.iter();
-	let Some(point) = points_iter.next() else {
+	let mut nodes_iter = layout.nodes.iter();
+	let Some(first_node) = nodes_iter.next() else {
 		return;
 	};
-	let (mut min_x, mut min_y, mut min_z, mut max_x, mut max_y, mut max_z) =
-		(point[0], point[1], point[2], point[0], point[1], point[2]);
-	for point in points_iter {
-		if point[0] < min_x {
-			min_x = point[0];
-		} else if point[0] > max_x {
-			max_x = point[0];
-		}
-		if point[1] < min_y {
-			min_y = point[1];
-		} else if point[1] > max_y {
-			max_y = point[1];
-		}
-		if point[2] < min_z {
-			min_z = point[2];
-		} else if point[2] > max_z {
-			max_z = point[2];
+	let (mut min_pos, mut max_pos) = (first_node.pos, first_node.pos);
+	for Node { pos, .. } in nodes_iter {
+		for ((min, max), val) in min_pos.iter_mut().zip(max_pos.iter_mut()).zip(pos.iter()) {
+			if val < min {
+				*min = *val;
+			} else if val > max {
+				*max = *val;
+			}
 		}
 	}
 
@@ -195,15 +164,12 @@ pub fn apply_repulsion_3d<T: Coord + Send + Sync>(layout: &mut Layout<T, 3>) {
 		NodeBody3<T, ()>,
 		3,
 	>::from_bump(&mut bump);
-	let mut root = tree.new_root((
-		Vec3::new(min_x, min_y, min_z),
-		Vec3::new(max_x, max_y, max_z),
-	));
+	let mut root = tree.new_root((VecN(min_pos), VecN(max_pos)));
 
-	for (pos, mass) in layout.points.iter().zip(layout.masses.iter()) {
+	for node in layout.nodes.iter() {
 		root.add_body(NodeBody3 {
-			pos: VecN(*pos),
-			mass: *mass + T::one(),
+			pos: VecN(node.pos),
+			mass: node.mass + T::one(),
 			custom: (),
 		});
 	}
@@ -211,52 +177,37 @@ pub fn apply_repulsion_3d<T: Coord + Send + Sync>(layout: &mut Layout<T, 3>) {
 	let kr = layout.settings.kr;
 	let theta = layout.settings.theta;
 
-	layout
-		.points
-		.par_iter()
-		.zip(layout.speeds.par_iter_mut())
-		.zip(layout.masses.par_iter())
-		.for_each(|((particle, speed), mass)| {
-			let f = root.apply(
-				VecN(*particle),
-				theta,
-				(),
-				&|bb, b, mm, d, _| (bb - b) * mm / d,
-				&|bb, b, mm, d, _, _| (bb - b) * mm / d,
-			) * kr * (*mass + T::one());
-			speed[0] -= f.x();
-			speed[1] -= f.y();
-			speed[2] -= f.z();
-		});
+	layout.nodes.par_iter_mut().for_each(|node| {
+		let f = root.apply(
+			VecN(node.pos),
+			theta,
+			(),
+			&|bb, b, mm, d, _| (bb - b) * mm / d,
+			&|bb, b, mm, d, _, _| (bb - b) * mm / d,
+		) * kr * (node.mass + T::one());
+		node.speed[0] -= f.x();
+		node.speed[1] -= f.y();
+		node.speed[2] -= f.z();
+	});
 	std::mem::drop(root);
 	tree.clear();
 }
 
 pub fn apply_repulsion_3d_po<T: Coord + Send + Sync>(layout: &mut Layout<T, 3>) {
 	let mut kr_prime = layout.settings.prevent_overlapping.unwrap();
-	let sizes = layout.sizes.as_ref().unwrap();
 
-	let mut points_iter = layout.points.iter();
-	let Some(point) = points_iter.next() else {
+	let mut nodes_iter = layout.nodes.iter();
+	let Some(first_node) = nodes_iter.next() else {
 		return;
 	};
-	let (mut min_x, mut min_y, mut min_z, mut max_x, mut max_y, mut max_z) =
-		(point[0], point[1], point[2], point[0], point[1], point[2]);
-	for point in points_iter {
-		if point[0] < min_x {
-			min_x = point[0];
-		} else if point[0] > max_x {
-			max_x = point[0];
-		}
-		if point[1] < min_y {
-			min_y = point[1];
-		} else if point[1] > max_y {
-			max_y = point[1];
-		}
-		if point[2] < min_z {
-			min_z = point[2];
-		} else if point[2] > max_z {
-			max_z = point[2];
+	let (mut min_pos, mut max_pos) = (first_node.pos, first_node.pos);
+	for Node { pos, .. } in nodes_iter {
+		for ((min, max), val) in min_pos.iter_mut().zip(max_pos.iter_mut()).zip(pos.iter()) {
+			if val < min {
+				*min = *val;
+			} else if val > max {
+				*max = *val;
+			}
 		}
 	}
 
@@ -268,16 +219,13 @@ pub fn apply_repulsion_3d_po<T: Coord + Send + Sync>(layout: &mut Layout<T, 3>) 
 		NodeBody3<T, T>,
 		3,
 	>::from_bump(&mut bump);
-	let mut root = tree.new_root((
-		Vec3::new(min_x, min_y, min_z),
-		Vec3::new(max_x, max_y, max_z),
-	));
+	let mut root = tree.new_root((VecN(min_pos), VecN(max_pos)));
 
-	for ((pos, mass), size) in layout.points.iter().zip(layout.masses.iter()).zip(sizes) {
+	for node in layout.nodes.iter() {
 		root.add_body(NodeBody3 {
-			pos: VecN(*pos),
-			mass: *mass + T::one(),
-			custom: *size,
+			pos: VecN(node.pos),
+			mass: node.mass + T::one(),
+			custom: node.size,
 		});
 	}
 
@@ -294,18 +242,13 @@ pub fn apply_repulsion_3d_po<T: Coord + Send + Sync>(layout: &mut Layout<T, 3>) 
 			(bb - b) * mm * kr_prime
 		}
 	};
-	layout
-		.points
-		.par_iter()
-		.zip(layout.speeds.par_iter_mut())
-		.zip(layout.masses.par_iter())
-		.zip(sizes.par_iter())
-		.for_each(|(((particle, speed), mass), size)| {
-			let f = root.apply(VecN(*particle), theta, *size, &f1, &f2) * kr * (*mass + T::one());
-			speed[0] -= f.x();
-			speed[1] -= f.y();
-			speed[2] -= f.z();
-		});
+	layout.nodes.par_iter_mut().for_each(|node| {
+		let f =
+			root.apply(VecN(node.pos), theta, node.size, &f1, &f2) * kr * (node.mass + T::one());
+		node.speed[0] -= f.x();
+		node.speed[1] -= f.y();
+		node.speed[2] -= f.z();
+	});
 	std::mem::drop(root);
 	tree.clear();
 }
