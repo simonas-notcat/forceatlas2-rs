@@ -40,11 +40,9 @@ where
 	}
 
 	/// Instanciates a randomly positioned layout from an undirected graph
-	///
-	/// Assumes edges `(n1, n2)` respect `n1 < n2`.
 	#[cfg(feature = "rand")]
 	pub fn from_graph(
-		edges: Vec<Edge>,
+		mut edges: Vec<Edge>,
 		nodes: Nodes<T>,
 		sizes: Option<Vec<T>>,
 		weights: Option<Vec<T>>,
@@ -80,6 +78,12 @@ where
 			assert!(settings.prevent_overlapping.is_none());
 		}
 
+		for edge in edges.iter_mut() {
+			if edge.0 > edge.1 {
+				*edge = (edge.1, edge.0);
+			}
+		}
+
 		let nb = nodes.len() * N;
 		Self {
 			edges,
@@ -108,12 +112,8 @@ where
 	}
 
 	/// Instanciates layout from an undirected graph, using initial positions
-	///
-	/// Assumes edges `(n1, n2)` respect `n1 < n2`
-	///
-	/// `positions` is a list of coordinates, e.g. `[x1, y1, x2, y2, ...]`.
 	pub fn from_position_graph(
-		edges: Vec<Edge>,
+		mut edges: Vec<Edge>,
 		nodes: Nodes<T>,
 		sizes: Option<Vec<T>>,
 		positions: Vec<[T; N]>,
@@ -147,6 +147,13 @@ where
 		}
 
 		assert_eq!(positions.len(), nodes.len());
+
+		for edge in edges.iter_mut() {
+			if edge.0 > edge.1 {
+				*edge = (edge.1, edge.0);
+			}
+		}
+
 		Self {
 			bump: parking_lot::Mutex::new(bumpalo::Bump::with_capacity(
 				(nodes.len() + 4 * (nodes.len().checked_ilog2().unwrap_or(0) as usize + 1))
@@ -172,7 +179,7 @@ where
 		&self.settings
 	}
 
-	/// New node indices in arguments start at the current number of nodes
+	/// New node indices in edges start at the current number of nodes
 	pub fn add_nodes(
 		&mut self,
 		edges: &[Edge],
@@ -201,7 +208,11 @@ where
 			.extend((0..positions.len()).map(|_| [T::zero(); N]));
 		self.old_speeds
 			.extend((0..positions.len()).map(|_| [T::zero(); N]));
-		self.edges.extend_from_slice(edges);
+		self.edges.extend(
+			edges
+				.iter()
+				.map(|(n1, n2)| if n1 > n2 { (*n2, *n1) } else { (*n1, *n2) }),
+		);
 		match (weights, &mut self.weights) {
 			(Some(new_weights), Some(weights)) => {
 				assert_eq!(edges.len(), new_weights.len());
