@@ -21,15 +21,7 @@ where
 		assert!(settings.check());
 		Self {
 			edges: Vec::new(),
-			points: Vec::new(),
-			masses: Vec::new(),
-			sizes: if settings.prevent_overlapping.is_some() {
-				Some(Vec::new())
-			} else {
-				None
-			},
-			speeds: Vec::new(),
-			old_speeds: Vec::new(),
+			nodes: Vec::new(),
 			weights: if weighted { Some(Vec::new()) } else { None },
 			bump: parking_lot::Mutex::new(bumpalo::Bump::new()),
 			fn_attraction: Self::choose_attraction(&settings),
@@ -41,10 +33,75 @@ where
 
 	/// Create a randomly positioned layout from an undirected graph
 	#[cfg(feature = "rand")]
-	pub fn from_graph(
+	pub fn from_graph_with_degree_mass<I: Iterator<Item=T>>(
+		nb_nodes: usize,
 		mut edges: Vec<Edge>,
-		nodes: Nodes<T>,
-		sizes: Option<Vec<T>>,
+		weights: Option<Vec<T>>,
+		sizes: Option<I>,
+		settings: Settings<T>,
+	) -> Self
+	where
+		rand::distributions::Standard: rand::distributions::Distribution<T>,
+		T: rand::distributions::uniform::SampleUniform,
+	{
+		assert!(settings.check());
+		if let Some(weights) = &weights {
+			assert_eq!(weights.len(), edges.len());
+		}
+		
+		let nodes = {
+			let mut rng = rand::thread_rng();
+			(0..nb_nodes).zip(sizes)
+				.map(|(_i, size)| Node {
+					position: util::sample_unit_ncube(&mut rng),
+					mass: 0.0,
+					speed: [0.0; N],
+					old_speed: [0.0; N],
+					size,
+				})
+				.collect()
+		};
+
+				for (n1, n2) in edges.iter() {
+					*nodes.get_mut(*n1).expect("Edge w").mass += T::one();
+					*nodes.get_mut(*n2).unwrap().mass += T::one();
+				}
+
+		if let Some(sizes) = &sizes {
+			assert_eq!(sizes.len(), nodes.len());
+		} else {
+			assert!(settings.prevent_overlapping.is_none());
+		}
+
+		for edge in edges.iter_mut() {
+			if edge.0 > edge.1 {
+				*edge = (edge.1, edge.0);
+			}
+		}
+
+		let nb = nodes.len() * N;
+		Self {
+			edges,
+			nodes,
+			weights,
+			bump: parking_lot::Mutex::new(bumpalo::Bump::with_capacity(
+				(nb + 4 * (nb.checked_ilog2().unwrap_or(0) as usize + 1))
+					* std::mem::size_of::<
+						trees::NodeN<T, forces::repulsion::NodeBodyN<T, T, N>, N, 1>,
+					>(),
+			)),
+			fn_attraction: Self::choose_attraction(&settings),
+			fn_gravity: Self::choose_gravity(&settings),
+			fn_repulsion: Self::choose_repulsion(&settings),
+			settings,
+		}
+	}
+
+	/// Create a randomly positioned layout from an undirected graph
+	#[cfg(feature = "rand")]
+	pub fn from_graph_with_masses<I: Iterator<Item=T>>(
+		mut edges: Vec<Edge>,
+		masses: I,
 		weights: Option<Vec<T>>,
 		settings: Settings<T>,
 	) -> Self
@@ -97,6 +154,7 @@ where
 			sizes,
 			speeds: (0..nb).map(|_| [T::zero(); N]).collect(),
 			old_speeds: (0..nb).map(|_| [T::zero(); N]).collect(),
+			nodes: 
 			weights,
 			bump: parking_lot::Mutex::new(bumpalo::Bump::with_capacity(
 				(nb + 4 * (nb.checked_ilog2().unwrap_or(0) as usize + 1))

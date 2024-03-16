@@ -53,20 +53,19 @@ impl<T: Coord> Settings<T> {
 	}
 }
 
+pub struct Node<T, const N: usize> {
+	pos: [T; N],
+	speed: [T; N],
+	old_speed: [T; N],
+	size: T,
+	mass: T,
+}
+
 /// Graph spatialization layout
 pub struct Layout<T, const N: usize> {
+	pub nodes: Vec<Node>,
 	/// Graph edges (undirected)
 	pub edges: Vec<Edge>,
-	/// Node masses
-	pub masses: Vec<T>,
-	/// Node positions
-	pub points: Vec<[T; N]>,
-	/// Node sizes (only used if prevent overlapping is enabled)
-	pub sizes: Option<Vec<T>>,
-	/// Node speeds
-	pub speeds: Vec<[T; N]>,
-	/// Node speeds at previous iteration
-	pub old_speeds: Vec<[T; N]>,
 	/// Node weights
 	pub weights: Option<Vec<T>>,
 	// Mutex needed here for Layout to be Sync
