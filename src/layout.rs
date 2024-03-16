@@ -1,5 +1,6 @@
 use crate::util::*;
 
+/// Settings for the graph layout
 #[derive(Clone)]
 pub struct Settings<T> {
 	/// Precision setting for Barnes-Hut computation
@@ -46,20 +47,29 @@ impl<T: Coord> Default for Settings<T> {
 }
 
 impl<T: Coord> Settings<T> {
+	/// Check whether the settings are valid
 	pub fn check(&self) -> bool {
 		self.theta >= T::zero() && self.theta <= T::one()
 	}
 }
 
+/// Graph spatialization layout
 pub struct Layout<T, const N: usize> {
+	/// Graph edges (undirected)
 	pub edges: Vec<Edge>,
+	/// Node masses
 	pub masses: Vec<T>,
+	/// Node positions
 	pub points: Vec<[T; N]>,
+	/// Node sizes (only used if prevent overlapping is enabled)
 	pub sizes: Option<Vec<T>>,
+	/// Node speeds
 	pub speeds: Vec<[T; N]>,
+	/// Node speeds at previous iteration
 	pub old_speeds: Vec<[T; N]>,
+	/// Node weights
 	pub weights: Option<Vec<T>>,
-	// Mutex needed here to be Sync
+	// Mutex needed here for Layout to be Sync
 	pub(crate) bump: parking_lot::Mutex<bumpalo::Bump>,
 	pub(crate) fn_attraction: fn(&mut Self),
 	pub(crate) fn_gravity: fn(&mut Self),

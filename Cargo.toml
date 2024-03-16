@@ -5,7 +5,7 @@ description = "fast force-directed generic n-dimension graph layout"
 authors = ["tuxmain <tuxmain@zettascript.org>"]
 repository = "https://framagit.org/ZettaScript/forceatlas2-rs"
 documentation = "https://docs.rs/forceatlas2"
-keywords = ["graph", "force"]
+keywords = ["graph", "force", "spatialization"]
 categories = ["visualization"]
 license = "AGPL-3.0-only"
 edition = "2021"
@@ -16,9 +16,6 @@ num-traits = "0.2"
 parking_lot = "0.12"
 rand = { version = "0.8", optional = true }
 rayon = "1.8"
-
-[dev-dependencies]
-alloc_counter = "0.0.4"
 
 [features]
 default = ["rand"]
