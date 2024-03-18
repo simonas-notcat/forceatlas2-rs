@@ -4,16 +4,9 @@ use crate::{layout::Layout, util::*};
 pub fn apply_attraction<T: Coord, const N: usize>(layout: &mut Layout<T, N>) {
 	for (n1, n2) in layout.edges.iter() {
 		let (n1, n2) = get_2_mut(&mut layout.nodes, *n1, *n2);
-		for ((n1_speed, n2_speed), (n1_pos, n2_pos)) in n1
-			.speed
-			.iter_mut()
-			.zip(n2.speed.iter_mut())
-			.zip(n1.pos.iter().zip(n2.pos.iter()))
-		{
-			let f = (*n2_pos - *n1_pos) * layout.settings.ka;
-			*n1_speed += f;
-			*n2_speed -= f;
-		}
+		let f = (n2.pos - n1.pos) * layout.settings.ka;
+		n1.speed += f;
+		n2.speed -= f;
 	}
 }
 

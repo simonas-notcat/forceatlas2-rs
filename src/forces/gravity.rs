@@ -11,18 +11,12 @@ pub fn apply_gravity<T: Coord + Send + Sync, const N: usize>(layout: &mut Layout
 		if d.is_zero() {
 			return;
 		}
-		let f = (node.mass + T::one()) * layout.settings.kg / d;
-		for (speed, pos) in node.speed.iter_mut().zip(node.pos.iter()) {
-			*speed -= f * *pos;
-		}
+		node.speed -= node.pos * (node.mass + T::one()) * layout.settings.kg / d;
 	})
 }
 
 pub fn apply_gravity_sg<T: Coord + Send + Sync, const N: usize>(layout: &mut Layout<T, N>) {
 	layout.nodes.par_iter_mut().for_each(|node| {
-		let f = (node.mass + T::one()) * layout.settings.kg;
-		for (speed, pos) in node.speed.iter_mut().zip(node.pos.iter()) {
-			*speed -= f * *pos;
-		}
+		node.speed -= node.pos * (node.mass + T::one()) * layout.settings.kg;
 	})
 }

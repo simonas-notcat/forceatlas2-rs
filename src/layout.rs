@@ -1,5 +1,7 @@
 use crate::util::*;
 
+use num_traits::Zero;
+
 /// Settings for the graph layout
 #[derive(Clone, Debug)]
 pub struct Settings<T> {
@@ -52,9 +54,9 @@ impl<T: Coord> Settings<T> {
 
 #[derive(Clone, Debug)]
 pub struct Node<T, const N: usize> {
-	pub pos: [T; N],
-	pub speed: [T; N],
-	pub old_speed: [T; N],
+	pub pos: VecN<T, N>,
+	pub speed: VecN<T, N>,
+	pub old_speed: VecN<T, N>,
 	pub size: T,
 	pub mass: T,
 }
@@ -62,9 +64,9 @@ pub struct Node<T, const N: usize> {
 impl<T: Coord, const N: usize> Default for Node<T, N> {
 	fn default() -> Self {
 		Node {
-			pos: [T::zero(); N],
-			speed: [T::zero(); N],
-			old_speed: [T::zero(); N],
+			pos: Zero::zero(),
+			speed: Zero::zero(),
+			old_speed: Zero::zero(),
 			size: T::one(),
 			mass: T::one(),
 		}
@@ -84,4 +86,16 @@ pub struct Layout<T, const N: usize> {
 	pub(crate) fn_gravity: fn(&mut Self),
 	pub(crate) fn_repulsion: fn(&mut Self),
 	pub(crate) settings: Settings<T>,
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn is_send_sync<T: Send + Sync>() {}
+
+	#[test]
+	fn layout_send_sync() {
+		is_send_sync::<Layout<f32, 2>>()
+	}
 }

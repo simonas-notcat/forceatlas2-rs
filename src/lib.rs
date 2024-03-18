@@ -8,7 +8,9 @@ mod util;
 use forces::{Attraction, Gravity, Repulsion};
 
 pub use layout::{Layout, Node, Settings};
-pub use util::{Coord, Edge, Nodes};
+pub use util::{Coord, Edge, Vec2, Vec3, VecN};
+
+use num_traits::Zero;
 
 impl<T: Coord, const N: usize> Layout<T, N>
 where
@@ -51,10 +53,10 @@ where
 			sizes
 				.into_iter()
 				.map(|size| Node {
-					pos: util::sample_unit_ncube(&mut rng),
+					pos: VecN(util::sample_unit_ncube(&mut rng)),
 					mass: T::zero(),
-					speed: [T::zero(); N],
-					old_speed: [T::zero(); N],
+					speed: Zero::zero(),
+					old_speed: Zero::zero(),
 					size,
 				})
 				.collect()
@@ -116,10 +118,10 @@ where
 			masses_sizes
 				.into_iter()
 				.map(|(mass, size)| Node {
-					pos: util::sample_unit_ncube(&mut rng),
+					pos: VecN(util::sample_unit_ncube(&mut rng)),
 					mass,
-					speed: [T::zero(); N],
-					old_speed: [T::zero(); N],
+					speed: Zero::zero(),
+					old_speed: Zero::zero(),
 					size,
 				})
 				.collect()
@@ -270,7 +272,7 @@ where
 	fn init_iteration(&mut self) {
 		for node in self.nodes.iter_mut() {
 			node.old_speed = node.speed;
-			node.speed = [T::zero(); N];
+			node.speed = Zero::zero();
 		}
 	}
 
@@ -345,13 +347,13 @@ mod tests {
 			vec![(0, 1)],
 			vec![
 				Node {
-					pos: [-1.0, -1.0],
-					speed: [12.34, 56.78],
+					pos: VecN([-1.0, -1.0]),
+					speed: VecN([12.34, 56.78]),
 					..Default::default()
 				},
 				Node {
-					pos: [1.0, 1.0],
-					speed: [42.0, 666.0],
+					pos: VecN([1.0, 1.0]),
+					speed: VecN([42.0, 666.0]),
 					..Default::default()
 				},
 			],
@@ -359,8 +361,8 @@ mod tests {
 			Settings::default(),
 		);
 		layout.init_iteration();
-		assert_eq!(layout.nodes[0].speed, [0.0, 0.0]);
-		assert_eq!(layout.nodes[1].speed, [0.0, 0.0]);
+		assert_eq!(layout.nodes[0].speed, VecN([0.0, 0.0]));
+		assert_eq!(layout.nodes[1].speed, VecN([0.0, 0.0]));
 	}
 
 	#[test]
@@ -369,11 +371,11 @@ mod tests {
 			vec![(0, 1)],
 			vec![
 				Node {
-					pos: [-2.0, -2.0],
+					pos: VecN([-2.0, -2.0]),
 					..Default::default()
 				},
 				Node {
-					pos: [1.0, 2.0],
+					pos: VecN([1.0, 2.0]),
 					..Default::default()
 				},
 			],
@@ -429,15 +431,15 @@ mod tests {
 			vec![(0, 1), (1, 2)],
 			vec![
 				Node {
-					pos: [-1.1, -1.0],
+					pos: VecN([-1.1, -1.0]),
 					..Default::default()
 				},
 				Node {
-					pos: [0.0, 0.0],
+					pos: VecN([0.0, 0.0]),
 					..Default::default()
 				},
 				Node {
-					pos: [1.0, 1.0],
+					pos: VecN([1.0, 1.0]),
 					..Default::default()
 				},
 			],
@@ -476,17 +478,17 @@ mod tests {
 			vec![(0, 1), (1, 2)],
 			vec![
 				Node {
-					pos: [-1.1, -1.0],
+					pos: VecN([-1.1, -1.0]),
 					size: 1.0,
 					..Default::default()
 				},
 				Node {
-					pos: [0.0, 0.0],
+					pos: VecN([0.0, 0.0]),
 					size: 5.0,
 					..Default::default()
 				},
 				Node {
-					pos: [1.0, 1.0],
+					pos: VecN([1.0, 1.0]),
 					size: 1.0,
 					..Default::default()
 				},
