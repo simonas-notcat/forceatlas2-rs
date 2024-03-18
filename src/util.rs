@@ -1,13 +1,9 @@
-use num_traits::{
-	cast::{FromPrimitive, NumCast},
-	real::Real,
-	sign::Signed,
-	Num, Zero,
-};
+use num_traits::{cast::FromPrimitive, real::Real, sign::Signed, Num, Zero};
 #[cfg(feature = "rand")]
 use rand::Rng;
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
+/// Some traits that are convenient for coordinates
 pub trait Coord = AddAssign<Self>
 	+ DivAssign<Self>
 	+ FromPrimitive
@@ -17,8 +13,10 @@ pub trait Coord = AddAssign<Self>
 	+ MulAssign<Self>
 	+ std::iter::Sum;
 
+/// Undirected graph edge indexing its two nodes
 pub type Edge = (usize, usize);
 
+/// N-dimensional vector
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct VecN<T, const N: usize>(pub [T; N]);
 
@@ -62,6 +60,7 @@ where
 }
 
 impl<T, const N: usize> VecN<T, N> {
+	/// Square norm
 	pub fn norm_squared(self) -> T
 	where
 		T: Copy + Num,
@@ -69,6 +68,7 @@ impl<T, const N: usize> VecN<T, N> {
 		self.0.into_iter().fold(T::zero(), |s, i| s + i * i)
 	}
 
+	/// Square distance to rhs
 	pub fn distance_squared(self, rhs: Self) -> T
 	where
 		T: Copy + Num,
@@ -79,6 +79,7 @@ impl<T, const N: usize> VecN<T, N> {
 			.fold(T::zero(), |s, (a, b)| s + (a - b) * (a - b))
 	}
 
+	/// Distance to rhs
 	pub fn distance(self, rhs: Self) -> T
 	where
 		T: Real,
@@ -86,10 +87,12 @@ impl<T, const N: usize> VecN<T, N> {
 		self.distance_squared(rhs).sqrt()
 	}
 
+	/// Iterate through the vector's coordinates
 	pub fn iter(&self) -> std::slice::Iter<T> {
 		self.0.iter()
 	}
 
+	/// Iterate mutably through the vector's coordinates
 	pub fn iter_mut(&mut self) -> std::slice::IterMut<T> {
 		self.0.iter_mut()
 	}
@@ -172,14 +175,18 @@ impl<T: Copy + Num, const N: usize> Zero for VecN<T, N> {
 	}
 }
 
+/// 2D vector
 pub type Vec2<T> = VecN<T, 2>;
+/// 3D vector
 pub type Vec3<T> = VecN<T, 3>;
 
 impl<T> Vec2<T> {
+	/// Create 2D vector from coordinates
 	pub fn new(x: T, y: T) -> Self {
 		Self([x, y])
 	}
 
+	/// Get x coordinate
 	pub fn x(&self) -> T
 	where
 		T: Clone,
@@ -187,6 +194,7 @@ impl<T> Vec2<T> {
 		self.0[0].clone()
 	}
 
+	/// Get y coordinate
 	pub fn y(&self) -> T
 	where
 		T: Clone,
@@ -196,10 +204,12 @@ impl<T> Vec2<T> {
 }
 
 impl<T> Vec3<T> {
+	/// Create 3D vector from coordinates
 	pub fn new(x: T, y: T, z: T) -> Self {
 		Self([x, y, z])
 	}
 
+	/// Get x coordinate
 	pub fn x(&self) -> T
 	where
 		T: Clone,
@@ -207,6 +217,7 @@ impl<T> Vec3<T> {
 		self.0[0].clone()
 	}
 
+	/// Get y coordinate
 	pub fn y(&self) -> T
 	where
 		T: Clone,
@@ -214,6 +225,7 @@ impl<T> Vec3<T> {
 		self.0[1].clone()
 	}
 
+	/// Get z coordinate
 	pub fn z(&self) -> T
 	where
 		T: Clone,
@@ -227,42 +239,16 @@ pub(crate) fn get_2_mut<T>(s: &mut [T], i1: usize, i2: usize) -> (&mut T, &mut T
 	(&mut s1[i1], &mut s2[0])
 }
 
-/// Uniform random distribution of points on a n-sphere
-///
-/// `n` is the number of spatial dimensions (1 => two points; 2 => circle; 3 => sphere; etc.).
+/// Uniform random distribution of points in an (N-1)-cube
 #[cfg(feature = "rand")]
-pub fn _sample_unit_nsphere<T, R: Rng, const N: usize>(rng: &mut R) -> [T; N]
+pub fn sample_unit_cube<T, R: Rng, const N: usize>(rng: &mut R) -> VecN<T, N>
 where
 	rand::distributions::Standard: rand::distributions::Distribution<T>,
 	T: Coord + rand::distributions::uniform::SampleUniform,
 {
-	let ray: T = NumCast::from(N).unwrap();
-	let mut v = [T::zero(); N];
-	let mut d = T::zero();
+	let mut v = VecN::<T, N>::zero();
 	for x in v.iter_mut() {
-		*x = rng.gen_range(ray.neg()..ray);
-		d += *x * *x;
-	}
-	d = d.sqrt();
-	for x in v.iter_mut() {
-		*x /= d;
-	}
-	v
-}
-
-/// Uniform random distribution of points in a n-cube
-///
-/// `n` is the number of spatial dimensions (1 => segment; 2 => square; 3 => cube; etc.).
-#[cfg(feature = "rand")]
-pub fn sample_unit_ncube<T, R: Rng, const N: usize>(rng: &mut R) -> [T; N]
-where
-	rand::distributions::Standard: rand::distributions::Distribution<T>,
-	T: Coord + rand::distributions::uniform::SampleUniform,
-{
-	let ray: T = NumCast::from(N).unwrap();
-	let mut v = [T::zero(); N];
-	for x in v.iter_mut() {
-		*x = rng.gen_range(ray.neg()..ray);
+		*x = rng.gen_range(T::one().neg()..T::one());
 	}
 	v
 }

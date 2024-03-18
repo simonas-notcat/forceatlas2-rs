@@ -52,12 +52,18 @@ impl<T: Coord> Settings<T> {
 	}
 }
 
+/// Graph vertex positioned in the layout
 #[derive(Clone, Debug)]
 pub struct Node<T, const N: usize> {
+	/// Position
 	pub pos: VecN<T, N>,
+	/// Current speed
 	pub speed: VecN<T, N>,
+	/// Speed at previous iteration
 	pub old_speed: VecN<T, N>,
+	/// Radius
 	pub size: T,
+	/// Mass
 	pub mass: T,
 }
 
@@ -75,6 +81,7 @@ impl<T: Coord, const N: usize> Default for Node<T, N> {
 
 /// Graph spatialization layout
 pub struct Layout<T, const N: usize> {
+	/// Graph vertices positioned in space
 	pub nodes: Vec<Node<T, N>>,
 	/// Graph edges (undirected)
 	pub edges: Vec<Edge>,

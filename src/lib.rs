@@ -1,4 +1,23 @@
 #![feature(trait_alias)]
+#![warn(missing_docs)]
+#![allow(clippy::tabs_in_doc_comments)]
+
+//! Implementation of [ForceAtlas2](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4051631/) &#8211; force-directed Continuous Graph Layout Algorithm for Handy Network Visualization (i.e. position the nodes of a n-dimension graph for drawing it more human-readably)
+//!
+//! ```rust
+//! let mut layout = forceatlas2::Layout::<f32, 2>::from_graph_with_degree_mass(
+//! 	vec![(0, 1), (1, 2), (0, 2), (2, 3)],
+//! 	None,
+//! 	(0..4).map(|_| 1.0),
+//! 	forceatlas2::Settings::default(),
+//! );
+//! for _ in 0..100 {
+//! 	layout.iteration();
+//! }
+//! for (i, node) in layout.nodes.iter().enumerate() {
+//! 	println!("{}: ({}, {})", i, node.pos.x(), node.pos.y());
+//! }
+//! ```
 
 mod forces;
 mod layout;
@@ -31,7 +50,7 @@ where
 		}
 	}
 
-	/// Create a randomly positioned layout from an undirected graph
+	/// Create a randomly positioned layout from an undirected graphi, using degree as mass
 	#[cfg(feature = "rand")]
 	pub fn from_graph_with_degree_mass<I: IntoIterator<Item = T>>(
 		mut edges: Vec<Edge>,
@@ -53,7 +72,7 @@ where
 			sizes
 				.into_iter()
 				.map(|size| Node {
-					pos: VecN(util::sample_unit_ncube(&mut rng)),
+					pos: util::sample_unit_cube(&mut rng),
 					mass: T::zero(),
 					speed: Zero::zero(),
 					old_speed: Zero::zero(),
@@ -118,7 +137,7 @@ where
 			masses_sizes
 				.into_iter()
 				.map(|(mass, size)| Node {
-					pos: VecN(util::sample_unit_ncube(&mut rng)),
+					pos: util::sample_unit_cube(&mut rng),
 					mass,
 					speed: Zero::zero(),
 					old_speed: Zero::zero(),
@@ -189,6 +208,7 @@ where
 		}
 	}
 
+	/// Get layout's settings
 	pub fn get_settings(&self) -> &Settings<T> {
 		&self.settings
 	}

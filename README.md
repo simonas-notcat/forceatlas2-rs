@@ -1,6 +1,6 @@
 # ForceAtlas2 Rust
 
-Fast implementation of [ForceAtlas2](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4051631/) &#8211; force-directed Continuous Graph Layout Algorithm for Handy Network Visualization (i.e. position the nodes of a n-dimension graph for drawing it more human-readably)
+Implementation of [ForceAtlas2](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4051631/) &#8211; force-directed Continuous Graph Layout Algorithm for Handy Network Visualization (i.e. position the nodes of a n-dimension graph for drawing it more human-readably)
 
 ![Example graph spacialized with ForceAtlas2-rs](https://txmn.tk/img/wot-fa2rs.png)
 
@@ -22,17 +22,13 @@ Interactive viewer. You need GTK installed.
 
     cargo run --release -p viz -- examples/wot.csv
 
-## Comparison
-
-Python (forceatlas2, fa2) and JS (sigma.js) implementations are slow.
-
-Java implementation (Gephi) does not use SIMD.
-
-Julia implementation (Anim-Wotmap) beats them all and uses SIMD, but is still slower than this one.
-
 ## Bindings
 
 There is a binding for use in Python, [fa2rs](https://framagit.org/ZettaScript/fa2rs-py).
+
+## Improvements
+
+Previous versions of this crate were using hand-written AVX2 code to speed up repulsion by 16. It was however still O(N^2). Now the only implementation of repulsion uses the Barnes-Hut algorithm (quadtree/octree, O(NlogN)), which makes any kind of parallelization harder (SIMD, multithreading, GPU). Some research papers describe ways to parallelize quadtree building or even to implement it using SIMD or GPU.
 
 ## License
 
