@@ -4,10 +4,10 @@
 
 //! Implementation of [ForceAtlas2](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4051631/) &#8211; force-directed Continuous Graph Layout Algorithm for Handy Network Visualization (i.e. position the nodes of a n-dimension graph for drawing it more human-readably)
 //!
+//! This example creates a graph containing 4 nodes of size 1, linked by undirected weighted edges.
 //! ```rust
 //! let mut layout = forceatlas2::Layout::<f32, 2>::from_graph_with_degree_mass(
-//! 	vec![(0, 1), (1, 2), (0, 2), (2, 3)],
-//! 	None,
+//! 	vec![((0, 1), 1.0), ((1, 2), 1.5), ((0, 2), 0.7), ((2, 3), 1.0)],
 //! 	(0..4).map(|_| 1.0),
 //! 	forceatlas2::Settings::default(),
 //! );
@@ -36,12 +36,11 @@ where
 	Layout<T, N>: forces::Attraction<T, N> + forces::Gravity<T, N> + forces::Repulsion<T, N>,
 {
 	/// Create an empty layout
-	pub fn empty(weighted: bool, settings: Settings<T>) -> Self {
+	pub fn empty(settings: Settings<T>) -> Self {
 		assert!(settings.check());
 		Self {
 			edges: Vec::new(),
 			nodes: Vec::new(),
-			weights: if weighted { Some(Vec::new()) } else { None },
 			bump: parking_lot::Mutex::new(bumpalo::Bump::new()),
 			fn_attraction: Self::choose_attraction(&settings),
 			fn_gravity: Self::choose_gravity(&settings),
@@ -50,11 +49,12 @@ where
 		}
 	}
 
-	/// Create a randomly positioned layout from an undirected graphi, using degree as mass
+	/// Create a randomly positioned layout from an undirected graph, using degree as mass
+	///
+	/// As many nodes will be created as elements in `sizes`.
 	#[cfg(feature = "rand")]
 	pub fn from_graph_with_degree_mass<I: IntoIterator<Item = T>>(
-		mut edges: Vec<Edge>,
-		weights: Option<Vec<T>>,
+		mut edges: Vec<(Edge, T)>,
 		sizes: I,
 		settings: Settings<T>,
 	) -> Self
@@ -63,9 +63,6 @@ where
 		T: rand::distributions::uniform::SampleUniform,
 	{
 		assert!(settings.check());
-		if let Some(weights) = &weights {
-			assert_eq!(weights.len(), edges.len());
-		}
 
 		let mut nodes: Vec<Node<T, N>> = {
 			let mut rng = rand::thread_rng();
@@ -81,7 +78,7 @@ where
 				.collect()
 		};
 
-		for edge in edges.iter_mut() {
+		for (edge, _weight) in edges.iter_mut() {
 			nodes
 				.get_mut(edge.0)
 				.expect("Node index out of bound in edge list")
@@ -99,7 +96,6 @@ where
 		Self {
 			edges,
 			nodes,
-			weights,
 			bump: parking_lot::Mutex::new(bumpalo::Bump::with_capacity(
 				(nb + 4 * (nb.checked_ilog2().unwrap_or(0) as usize + 1))
 					* std::mem::size_of::<
@@ -116,11 +112,12 @@ where
 	/// Create a randomly positioned layout from an undirected graph
 	///
 	/// `masses_sizes`'s elements are `(mass, size)`.
+	///
+	/// As many nodes will be created as elements in `masses_sizes`.
 	#[cfg(feature = "rand")]
 	pub fn from_graph_with_masses<I: IntoIterator<Item = (T, T)>>(
-		mut edges: Vec<Edge>,
+		mut edges: Vec<(Edge, T)>,
 		masses_sizes: I,
-		weights: Option<Vec<T>>,
 		settings: Settings<T>,
 	) -> Self
 	where
@@ -128,9 +125,6 @@ where
 		T: rand::distributions::uniform::SampleUniform,
 	{
 		assert!(settings.check());
-		if let Some(weights) = &weights {
-			assert_eq!(weights.len(), edges.len());
-		}
 
 		let nodes: Vec<Node<T, N>> = {
 			let mut rng = rand::thread_rng();
@@ -145,7 +139,7 @@ where
 				})
 				.collect()
 		};
-		for edge in edges.iter_mut() {
+		for (edge, _weight) in edges.iter_mut() {
 			assert!(
 				edge.0 < nodes.len() && edge.1 < nodes.len(),
 				"Node index out of bound in edge list"
@@ -158,7 +152,6 @@ where
 		let nb = nodes.len() * N;
 		Self {
 			edges,
-			weights,
 			nodes,
 			bump: parking_lot::Mutex::new(bumpalo::Bump::with_capacity(
 				(nb + 4 * (nb.checked_ilog2().unwrap_or(0) as usize + 1))
@@ -175,17 +168,13 @@ where
 
 	/// Create a layout from an undirected graph, with initial positions
 	pub fn from_position_graph(
-		mut edges: Vec<Edge>,
+		mut edges: Vec<(Edge, T)>,
 		nodes: Vec<Node<T, N>>,
-		weights: Option<Vec<T>>,
 		settings: Settings<T>,
 	) -> Self {
 		assert!(settings.check());
-		if let Some(weights) = &weights {
-			assert_eq!(weights.len(), edges.len());
-		}
 
-		for edge in edges.iter_mut() {
+		for (edge, _weight) in edges.iter_mut() {
 			if edge.0 > edge.1 {
 				*edge = (edge.1, edge.0);
 			}
@@ -200,7 +189,6 @@ where
 			)),
 			edges,
 			nodes,
-			weights,
 			fn_attraction: Self::choose_attraction(&settings),
 			fn_gravity: Self::choose_gravity(&settings),
 			fn_repulsion: Self::choose_repulsion(&settings),
@@ -216,29 +204,18 @@ where
 	/// Add nodes to the graph
 	///
 	/// New node indices in edges start at the current number of nodes.
-	pub fn add_nodes(&mut self, edges: &[Edge], nodes: &[Node<T, N>], weights: Option<&[T]>) {
+	pub fn add_nodes(&mut self, edges: &[(Edge, T)], nodes: &[Node<T, N>]) {
 		self.nodes.extend_from_slice(nodes);
 		self.edges.extend(
 			edges
 				.iter()
-				.map(|(n1, n2)| if n1 > n2 { (*n2, *n1) } else { (*n1, *n2) }),
+				.map(|((n1, n2), weight)| (if n1 > n2 { (*n2, *n1) } else { (*n1, *n2) }, *weight)),
 		);
-		match (weights, &mut self.weights) {
-			(Some(new_weights), Some(weights)) => {
-				assert_eq!(edges.len(), new_weights.len());
-				weights.extend_from_slice(new_weights);
-			}
-			(None, None) => {}
-			_ => panic!("Inconsistent weighting"),
-		}
 	}
 
 	/// Remove an edge by index
 	pub fn remove_edge(&mut self, edge: usize) {
 		self.edges.remove(edge);
-		if let Some(weights) = &mut self.weights {
-			weights.remove(edge);
-		}
 	}
 
 	/// Remove a node by index
@@ -250,7 +227,7 @@ where
 
 	/// Remove a node's incident edges
 	pub fn remove_incident_edges(&mut self, node: usize) {
-		util::drain_filter_swap(&mut self.edges, |(n1, n2)| {
+		util::drain_filter_swap(&mut self.edges, |((n1, n2), _weight)| {
 			if *n1 == node || *n2 == node {
 				false
 			} else {
@@ -345,8 +322,13 @@ mod tests {
 	#[test]
 	fn test_global() {
 		let mut layout = Layout::<f64, 2>::from_graph_with_degree_mass(
-			vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 4)],
-			None,
+			vec![
+				((0, 1), 1.0),
+				((0, 2), 1.0),
+				((0, 3), 1.0),
+				((1, 2), 1.0),
+				((1, 4), 1.0),
+			],
 			[1.0; 5],
 			Settings::default(),
 		);
@@ -364,7 +346,7 @@ mod tests {
 	#[test]
 	fn test_init_iteration() {
 		let mut layout = Layout::<f64, 2>::from_position_graph(
-			vec![(0, 1)],
+			vec![((0, 1), 1.0)],
 			vec![
 				Node {
 					pos: VecN([-1.0, -1.0]),
@@ -377,7 +359,6 @@ mod tests {
 					..Default::default()
 				},
 			],
-			None,
 			Settings::default(),
 		);
 		layout.init_iteration();
@@ -388,7 +369,7 @@ mod tests {
 	#[test]
 	fn test_forces() {
 		let mut layout = Layout::<f64, 2>::from_position_graph(
-			vec![(0, 1)],
+			vec![((0, 1), 1.0)],
 			vec![
 				Node {
 					pos: VecN([-2.0, -2.0]),
@@ -399,7 +380,6 @@ mod tests {
 					..Default::default()
 				},
 			],
-			None,
 			Settings::default(),
 		);
 
@@ -448,7 +428,7 @@ mod tests {
 	#[test]
 	fn test_convergence() {
 		let mut layout = Layout::<f64, 2>::from_position_graph(
-			vec![(0, 1), (1, 2)],
+			vec![((0, 1), 1.0), ((1, 2), 1.0)],
 			vec![
 				Node {
 					pos: VecN([-1.1, -1.0]),
@@ -463,7 +443,6 @@ mod tests {
 					..Default::default()
 				},
 			],
-			None,
 			Settings {
 				ka: 0.5,
 				kg: 0.01,
@@ -495,7 +474,7 @@ mod tests {
 	#[test]
 	fn test_convergence_po() {
 		let mut layout = Layout::<f64, 2>::from_position_graph(
-			vec![(0, 1), (1, 2)],
+			vec![((0, 1), 1.0), ((1, 2), 1.0)],
 			vec![
 				Node {
 					pos: VecN([-1.1, -1.0]),
@@ -513,7 +492,6 @@ mod tests {
 					..Default::default()
 				},
 			],
-			None,
 			Settings {
 				ka: 0.5,
 				kg: 0.01,

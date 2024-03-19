@@ -15,7 +15,7 @@ fn main() {
 	let file = std::fs::File::open(filename).expect("Cannot open file");
 
 	let mut nodes = 0usize;
-	let mut edges = Vec::<(usize, usize)>::new();
+	let mut edges = Vec::<((usize, usize), f32)>::new();
 	for (i, line) in std::io::BufReader::new(file).lines().enumerate() {
 		let line = line.expect("Error reading CSV");
 		let mut columns = line.split(&[' ', '\t', ',', ';'][..]);
@@ -29,7 +29,7 @@ fn main() {
 					nodes = n2;
 				}
 				if n1 != n2 {
-					edges.push(if n1 < n2 { (n1, n2) } else { (n2, n1) });
+					edges.push((if n1 < n2 { (n1, n2) } else { (n2, n1) }, 1.0));
 				}
 			} else {
 				eprintln!("Ignored line {} has bad number format", i);
@@ -44,7 +44,6 @@ fn main() {
 
 	let mut layout = Layout::<f32, 2>::from_graph_with_degree_mass(
 		edges,
-		None,
 		(0..nodes).map(|_| 1.0),
 		Settings {
 			theta: 0.5,

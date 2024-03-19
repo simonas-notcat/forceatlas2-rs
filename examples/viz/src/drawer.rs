@@ -226,7 +226,7 @@ pub fn draw_graph(
 	};
 
 	if draw_edges {
-		for (h1, h2) in layout.1.edges.iter() {
+		for ((h1, h2), _weight) in layout.1.edges.iter() {
 			draw_line(
 				pixels,
 				size,
@@ -323,19 +323,17 @@ pub fn draw_graph_3d(
 	);
 
 	if draw_edges {
-		for (h1, h2) in layout.2.edges.iter() {
+		for ((h1, h2), _weight) in layout.2.edges.iter() {
 			let p1 = layout.2.nodes[*h1].pos;
 			let p2 = layout.2.nodes[*h2].pos;
-			let proj = camera.world_to_pixel(&cam_geom::Points::new(unsafe {
-				Matrix2x3::new(
-					*p1.get_unchecked(0) as f32,
-					*p1.get_unchecked(1) as f32,
-					*p1.get_unchecked(2) as f32,
-					*p2.get_unchecked(0) as f32,
-					*p2.get_unchecked(1) as f32,
-					*p2.get_unchecked(2) as f32,
-				)
-			}));
+			let proj = camera.world_to_pixel(&cam_geom::Points::new(Matrix2x3::new(
+				p1.x(),
+				p1.y(),
+				p1.z(),
+				p2.x(),
+				p2.y(),
+				p2.z(),
+			)));
 			draw_line(
 				pixels,
 				size,

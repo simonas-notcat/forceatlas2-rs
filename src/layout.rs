@@ -84,9 +84,7 @@ pub struct Layout<T, const N: usize> {
 	/// Graph vertices positioned in space
 	pub nodes: Vec<Node<T, N>>,
 	/// Graph edges (undirected)
-	pub edges: Vec<Edge>,
-	/// Node weights
-	pub weights: Option<Vec<T>>,
+	pub edges: Vec<(Edge, T)>,
 	// Mutex needed here for Layout to be Sync
 	pub(crate) bump: parking_lot::Mutex<bumpalo::Bump>,
 	pub(crate) fn_attraction: fn(&mut Self),

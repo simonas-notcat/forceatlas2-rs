@@ -14,8 +14,7 @@ fn main() {
 		.expect("Cannot open file");
 
 	let mut nodes = 0usize;
-	let mut edges = Vec::<(usize, usize)>::new();
-	let mut weights = Vec::new();
+	let mut edges = Vec::<((usize, usize), T)>::new();
 	for (i, line) in std::io::BufReader::new(file).lines().enumerate() {
 		let line = line.expect("Error reading CSV");
 		let mut columns = line.split(&[' ', '\t', ',', ';'][..]);
@@ -28,13 +27,15 @@ fn main() {
 					nodes = n2;
 				}
 				if n1 != n2 {
-					edges.push(if n1 < n2 { (n1, n2) } else { (n2, n1) });
-					weights.push(columns.next().map_or(1.0, |w| {
-						w.parse().unwrap_or_else(|_| {
-							eprintln!("Ignored weight line {} has bad number format", i);
-							1.0
-						})
-					}));
+					edges.push((
+						if n1 < n2 { (n1, n2) } else { (n2, n1) },
+						columns.next().map_or(1.0, |w| {
+							w.parse().unwrap_or_else(|_| {
+								eprintln!("Ignored weight line {} has bad number format", i);
+								1.0
+							})
+						}),
+					));
 				} else {
 					eprintln!("Ignored line {} has loop", i);
 				}
@@ -55,7 +56,7 @@ fn main() {
 		kg: 1.0,
 		kr: 1.0,
 		lin_log: false,
-		prevent_overlapping: None,
+		prevent_overlapping: Some(100.),
 		speed: 0.01,
 		strong_gravity: false,
 	};
@@ -64,13 +65,11 @@ fn main() {
 		false,
 		Layout::<T, 2>::from_graph_with_degree_mass(
 			edges.clone(),
-			Some(weights.clone()),
 			(0..nodes).map(|_| 1.0),
 			settings.clone(),
 		),
 		Layout::<T, 3>::from_graph_with_degree_mass(
 			edges,
-			Some(weights),
 			(0..nodes).map(|_| 1.0),
 			settings.clone(),
 		),

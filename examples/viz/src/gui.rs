@@ -256,16 +256,16 @@ fn build_ui(
 			let mut rng = rand::thread_rng();
 			let mut layout = layout.write();
 			layout.1.nodes.iter_mut().for_each(|node| {
-				node.old_speed = [0.0; 2];
-				node.pos = [rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0)];
+				node.old_speed = Vec2::new(0.0, 0.0);
+				node.pos = Vec2::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
 			});
 			layout.2.nodes.iter_mut().for_each(|node| {
-				node.old_speed = [0.0; 3];
-				node.pos = [
+				node.old_speed = Vec3::new(0.0, 0.0, 0.0);
+				node.pos = Vec3::new(
 					rng.gen_range(-1.0..1.0),
 					rng.gen_range(-1.0..1.0),
 					rng.gen_range(-1.0..1.0),
-				];
+				);
 			});
 			tx.write().redraw = true;
 			*nb_iters.write() = 0;

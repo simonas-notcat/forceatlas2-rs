@@ -1,20 +1,21 @@
 use crate::{layout::Layout, util::*};
 
-// TODO weighted impl
+use num_traits::Zero;
+
 pub fn apply_attraction<T: Coord, const N: usize>(layout: &mut Layout<T, N>) {
-	for (n1, n2) in layout.edges.iter() {
+	for ((n1, n2), weight) in layout.edges.iter() {
 		let (n1, n2) = get_2_mut(&mut layout.nodes, *n1, *n2);
-		let f = (n2.pos - n1.pos) * layout.settings.ka;
+		let f = (n2.pos - n1.pos) * layout.settings.ka * *weight;
 		n1.speed += f;
 		n2.speed -= f;
 	}
 }
 
 pub fn apply_attraction_log<T: Coord, const N: usize>(layout: &mut Layout<T, N>) {
-	for (n1, n2) in layout.edges.iter() {
+	for ((n1, n2), weight) in layout.edges.iter() {
 		let (n1, n2) = get_2_mut(&mut layout.nodes, *n1, *n2);
 		let mut d = T::zero();
-		let mut dv = [T::zero(); N];
+		let mut dv = VecN::<T, N>::zero();
 		for ((n1_pos, n2_pos), dvi) in n1.pos.iter().zip(n2.pos.iter()).zip(dv.iter_mut()) {
 			*dvi = *n2_pos - *n1_pos;
 			d += *dvi * *dvi;
@@ -23,21 +24,17 @@ pub fn apply_attraction_log<T: Coord, const N: usize>(layout: &mut Layout<T, N>)
 			continue;
 		}
 		d = d.sqrt();
-		let f = d.ln_1p() / d * layout.settings.ka;
-		for ((n1_speed, n2_speed), dvi) in
-			n1.speed.iter_mut().zip(n2.speed.iter_mut()).zip(dv.iter())
-		{
-			*n1_speed += f * *dvi;
-			*n2_speed -= f * *dvi;
-		}
+		let f = dv * (d.ln_1p() / d * layout.settings.ka * *weight);
+		n1.speed += f;
+		n2.speed -= f;
 	}
 }
 
 pub fn apply_attraction_po<T: Coord, const N: usize>(layout: &mut Layout<T, N>) {
-	for (n1, n2) in layout.edges.iter() {
+	for ((n1, n2), weight) in layout.edges.iter() {
 		let (n1, n2) = get_2_mut(&mut layout.nodes, *n1, *n2);
 		let mut d = T::zero();
-		let mut dv = [T::zero(); N];
+		let mut dv = VecN::<T, N>::zero();
 		for ((n1_pos, n2_pos), dvi) in n1.pos.iter().zip(n2.pos.iter()).zip(dv.iter_mut()) {
 			*dvi = *n2_pos - *n1_pos;
 			d += *dvi * *dvi;
@@ -47,21 +44,17 @@ pub fn apply_attraction_po<T: Coord, const N: usize>(layout: &mut Layout<T, N>) 
 		if !dprime.is_positive() {
 			continue;
 		}
-		let f = dprime / d * layout.settings.ka;
-		for ((n1_speed, n2_speed), dvi) in
-			n1.speed.iter_mut().zip(n2.speed.iter_mut()).zip(dv.iter())
-		{
-			*n1_speed += f * *dvi;
-			*n2_speed -= f * *dvi;
-		}
+		let f = dv * (dprime / d * layout.settings.ka * *weight);
+		n1.speed += f;
+		n2.speed -= f;
 	}
 }
 
 pub fn apply_attraction_log_po<T: Coord, const N: usize>(layout: &mut Layout<T, N>) {
-	for (n1, n2) in layout.edges.iter() {
+	for ((n1, n2), weight) in layout.edges.iter() {
 		let (n1, n2) = get_2_mut(&mut layout.nodes, *n1, *n2);
 		let mut d = T::zero();
-		let mut dv = [T::zero(); N];
+		let mut dv = VecN::<T, N>::zero();
 		for ((n1_pos, n2_pos), dvi) in n1.pos.iter().zip(n2.pos.iter()).zip(dv.iter_mut()) {
 			*dvi = *n2_pos - *n1_pos;
 			d += *dvi * *dvi;
@@ -71,13 +64,8 @@ pub fn apply_attraction_log_po<T: Coord, const N: usize>(layout: &mut Layout<T, 
 		if !dprime.is_positive() {
 			continue;
 		}
-		// TODO check formula
-		let f = dprime.ln_1p() / dprime * layout.settings.ka;
-		for ((n1_speed, n2_speed), dvi) in
-			n1.speed.iter_mut().zip(n2.speed.iter_mut()).zip(dv.iter())
-		{
-			*n1_speed += f * *dvi;
-			*n2_speed -= f * *dvi;
-		}
+		let f = dv * (dprime.ln_1p() / d * layout.settings.ka * *weight);
+		n1.speed += f;
+		n2.speed -= f;
 	}
 }
