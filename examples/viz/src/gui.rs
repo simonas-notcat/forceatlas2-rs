@@ -66,6 +66,10 @@ fn build_ui(
 	let bg_color_input: gtk::ColorButton = builder.object("bg_color").unwrap();
 	let zoom_input: gtk::Entry = builder.object("zoom").unwrap();
 	let d3_input: gtk::CheckButton = builder.object("3d").unwrap();
+	let po_input: gtk::CheckButton = builder.object("po").unwrap();
+	let po_krprime_input: gtk::Entry = builder.object("po_krprime").unwrap();
+	let sg_input: gtk::CheckButton = builder.object("sg").unwrap();
+	let linlog_input: gtk::CheckButton = builder.object("linlog").unwrap();
 	let nb_iters_disp: gtk::Label = builder.object("nb_iters").unwrap();
 
 	let save_img_window: gtk::FileChooserDialog = builder.object("save_img_window").unwrap();
@@ -93,6 +97,14 @@ fn build_ui(
 			kr_input.set_text(&settings.kr.to_string());
 			speed_input.set_text(&settings.speed.to_string());
 			theta_input.set_text(&settings.theta.to_string());
+			if let Some(krprime) = &settings.prevent_overlapping {
+				po_input.set_active(true);
+				po_krprime_input.set_text(&krprime.to_string());
+			} else {
+				po_input.set_active(false);
+			}
+			sg_input.set_active(settings.strong_gravity);
+			linlog_input.set_active(settings.lin_log);
 		}
 		draw_edges_input.set_active(draw_settings.draw_edges);
 		edge_color_input.set_rgba({
@@ -520,12 +532,72 @@ fn build_ui(
 	});
 
 	d3_input.connect_toggled({
+		let layout = layout.clone();
 		let tx = tx.clone();
 		let nb_iters = nb_iters.clone();
 		move |d3_input| {
 			layout.write().0 = d3_input.is_active();
 			*nb_iters.write() = 0;
 			tx.write().redraw = true;
+		}
+	});
+
+	po_input.connect_toggled({
+		let layout = layout.clone();
+		let settings = settings.clone();
+		let po_krprime_input = po_krprime_input.clone();
+		move |po_input| {
+			let mut settings = settings.write();
+			settings.prevent_overlapping = if po_input.is_active() {
+				po_krprime_input.text().parse().ok()
+			} else {
+				None
+			};
+			let mut layout = layout.write();
+			layout.1.set_settings(settings.clone());
+			layout.2.set_settings(settings.clone());
+		}
+	});
+
+	po_krprime_input.connect_changed({
+		let layout = layout.clone();
+		let settings = settings.clone();
+		move |entry| {
+			if let Ok(krprime) = entry.text().parse() {
+				entry.set_secondary_icon_name(None);
+				let mut settings = settings.write();
+				if let Some(layout_krprime) = &mut settings.prevent_overlapping {
+					*layout_krprime = krprime;
+				}
+				let mut layout = layout.write();
+				layout.1.set_settings(settings.clone());
+				layout.2.set_settings(settings.clone());
+			} else {
+				entry.set_secondary_icon_name(Some("emblem-unreadable"));
+			}
+		}
+	});
+
+	sg_input.connect_toggled({
+		let layout = layout.clone();
+		let settings = settings.clone();
+		move |sg_input| {
+			let mut settings = settings.write();
+			settings.strong_gravity = sg_input.is_active();
+			let mut layout = layout.write();
+			layout.1.set_settings(settings.clone());
+			layout.2.set_settings(settings.clone());
+		}
+	});
+
+	linlog_input.connect_toggled({
+		let layout = layout.clone();
+		move |linlog_input| {
+			let mut settings = settings.write();
+			settings.lin_log = linlog_input.is_active();
+			let mut layout = layout.write();
+			layout.1.set_settings(settings.clone());
+			layout.2.set_settings(settings.clone());
 		}
 	});
 
