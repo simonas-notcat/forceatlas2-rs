@@ -3,6 +3,9 @@ use crate::util::*;
 use num_traits::{real::Real, Zero};
 use std::borrow::{Borrow, BorrowMut};
 
+/// Maximum tree depth
+const MAX_DEPTH: usize = 32;
+
 pub struct Tree<'a, D, T: 'a, C, L: 'a, const N: usize> {
 	bump: &'a mut bumpalo::Bump,
 	phantom: std::marker::PhantomData<([T; N], C, L, &'a D)>,
@@ -39,7 +42,7 @@ pub struct Root<'r, D, T, C, L, const N: usize> {
 
 impl<'r, D: Node<T, C, L, N>, T, C, L, const N: usize> Root<'r, D, T, C, L, N> {
 	pub fn add_body(&mut self, new_body: L) {
-		BorrowMut::<D>::borrow_mut(&mut self.node).add_body(new_body)
+		BorrowMut::<D>::borrow_mut(&mut self.node).add_body(new_body, 0)
 	}
 	pub fn apply<
 		F1: Fn(VecN<T, N>, VecN<T, N>, T, T, C) -> VecN<T, N>,
@@ -65,7 +68,7 @@ pub trait Body<T, C, const N: usize> {
 
 pub trait Node<T, C, L, const N: usize> {
 	fn new(pos: (VecN<T, N>, VecN<T, N>)) -> Self;
-	fn add_body(&mut self, new_body: L);
+	fn add_body(&mut self, new_body: L, depth: usize);
 	fn apply<
 		F1: Fn(VecN<T, N>, VecN<T, N>, T, T, C) -> VecN<T, N>,
 		F2: Fn(VecN<T, N>, VecN<T, N>, T, T, C, C) -> VecN<T, N>,
@@ -100,7 +103,7 @@ impl<T: Real, C: Clone, L: Body<T, C, 2>> Node<T, C, L, 2> for Node2<T, L> {
 	fn new(pos: (Vec2<T>, Vec2<T>)) -> Self {
 		Node2::Leaf { body: None, pos }
 	}
-	fn add_body(&mut self, new_body: L) {
+	fn add_body(&mut self, new_body: L, depth: usize) {
 		match self {
 			Node2::Branch {
 				nodes,
@@ -121,11 +124,11 @@ impl<T: Real, C: Clone, L: Body<T, C, 2>> Node<T, C, L, 2> for Node2<T, L> {
 					(true, false) => 2,
 					(false, false) => 3,
 				}]
-				.add_body(new_body)
+				.add_body(new_body, depth + 1)
 			}
 			Node2::Leaf { body, pos } => {
 				if let Some(mut body) = body.take() {
-					if body.pos().distance_squared(new_body.pos()) < T::one() {
+					if depth > MAX_DEPTH || body.pos().distance_squared(new_body.pos()) < T::one() {
 						body.add_mass(new_body.mass());
 						*self = Node2::Leaf {
 							body: Some(body),
@@ -164,8 +167,8 @@ impl<T: Real, C: Clone, L: Body<T, C, 2>> Node<T, C, L, 2> for Node2<T, L> {
 						center_of_mass: center,
 						width: pos.1.x() - pos.0.x(),
 					};
-					self.add_body(body);
-					self.add_body(new_body)
+					self.add_body(body, depth + 1);
+					self.add_body(new_body, depth + 1)
 				} else {
 					*body = Some(new_body);
 				}
@@ -223,7 +226,7 @@ impl<T: Real, C: Clone, L: Body<T, C, 3>> Node<T, C, L, 3> for Node3<T, L> {
 	fn new(pos: (Vec3<T>, Vec3<T>)) -> Self {
 		Node3::Leaf { body: None, pos }
 	}
-	fn add_body(&mut self, new_body: L) {
+	fn add_body(&mut self, new_body: L, depth: usize) {
 		match self {
 			Node3::Branch {
 				nodes,
@@ -252,11 +255,11 @@ impl<T: Real, C: Clone, L: Body<T, C, 3>> Node<T, C, L, 3> for Node3<T, L> {
 					(true, false, false) => 6,
 					(false, false, false) => 7,
 				}]
-				.add_body(new_body)
+				.add_body(new_body, depth + 1)
 			}
 			Node3::Leaf { body, pos } => {
 				if let Some(mut body) = body.take() {
-					if body.pos().distance_squared(new_body.pos()) < T::one() {
+					if depth > MAX_DEPTH || body.pos().distance_squared(new_body.pos()) < T::one() {
 						body.add_mass(new_body.mass());
 						*self = Node3::Leaf {
 							body: Some(body),
@@ -323,8 +326,8 @@ impl<T: Real, C: Clone, L: Body<T, C, 3>> Node<T, C, L, 3> for Node3<T, L> {
 						center_of_mass: center,
 						width: pos.1.x() - pos.0.x(),
 					};
-					self.add_body(body);
-					self.add_body(new_body)
+					self.add_body(body, depth + 1);
+					self.add_body(new_body, depth + 1)
 				} else {
 					*body = Some(new_body);
 				}
