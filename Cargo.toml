@@ -22,3 +22,7 @@ default = ["rand"]
 
 [workspace]
 members = ["examples/viz"]
+
+[profile.release]
+debug = "full"
+lto = "fat"

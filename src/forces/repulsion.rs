@@ -20,8 +20,10 @@ impl<T: Coord, C: Copy, const N: usize> Body<T, C, N> for NodeBodyN<T, C, N> {
 		self.pos
 	}
 
-	fn add_mass(&mut self, mass: T) {
-		self.mass += mass
+	fn add_mass(&mut self, mass: T, pos: VecN<T, N>) {
+		let new_mass = self.mass + mass;
+		self.pos = (self.pos * self.mass + pos * mass) / new_mass;
+		self.mass = new_mass;
 	}
 
 	fn custom(&self) -> C {

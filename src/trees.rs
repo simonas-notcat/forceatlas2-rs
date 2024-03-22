@@ -59,16 +59,25 @@ impl<'r, D: Node<T, C, L, N>, T, C, L, const N: usize> Root<'r, D, T, C, L, N> {
 	}
 }
 
+/// A body in the Barnes-Hut simulation
 pub trait Body<T, C, const N: usize> {
+	/// Get mass
 	fn mass(&self) -> T;
+	/// Get position
 	fn pos(&self) -> VecN<T, N>;
-	fn add_mass(&mut self, mass: T);
+	/// Change center of mass by adding given mass at given position
+	fn add_mass(&mut self, mass: T, pos: VecN<T, N>);
+	/// Get custom value
 	fn custom(&self) -> C;
 }
 
+/// A tree node in the Barnes-Hut simulation
 pub trait Node<T, C, L, const N: usize> {
+	/// Create a node with given AABB points
 	fn new(pos: (VecN<T, N>, VecN<T, N>)) -> Self;
+	/// Add a body to the node, at a given recursion depth
 	fn add_body(&mut self, new_body: L, depth: usize);
+	/// Compute the force applied on a virtual body at a given position
 	fn apply<
 		F1: Fn(VecN<T, N>, VecN<T, N>, T, T, C) -> VecN<T, N>,
 		F2: Fn(VecN<T, N>, VecN<T, N>, T, T, C, C) -> VecN<T, N>,
@@ -129,7 +138,7 @@ impl<T: Real, C: Clone, L: Body<T, C, 2>> Node<T, C, L, 2> for Node2<T, L> {
 			Node2::Leaf { body, pos } => {
 				if let Some(mut body) = body.take() {
 					if depth > MAX_DEPTH || body.pos().distance_squared(new_body.pos()) < T::one() {
-						body.add_mass(new_body.mass());
+						body.add_mass(new_body.mass(), new_body.pos());
 						*self = Node2::Leaf {
 							body: Some(body),
 							pos: *pos,
@@ -260,7 +269,7 @@ impl<T: Real, C: Clone, L: Body<T, C, 3>> Node<T, C, L, 3> for Node3<T, L> {
 			Node3::Leaf { body, pos } => {
 				if let Some(mut body) = body.take() {
 					if depth > MAX_DEPTH || body.pos().distance_squared(new_body.pos()) < T::one() {
-						body.add_mass(new_body.mass());
+						body.add_mass(new_body.mass(), new_body.pos());
 						*self = Node3::Leaf {
 							body: Some(body),
 							pos: *pos,
