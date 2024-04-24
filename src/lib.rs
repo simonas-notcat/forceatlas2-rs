@@ -1,4 +1,3 @@
-#![feature(trait_alias)]
 #![warn(missing_docs)]
 #![allow(clippy::tabs_in_doc_comments)]
 

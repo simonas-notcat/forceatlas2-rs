@@ -4,14 +4,29 @@ use rand::Rng;
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
 /// Some traits that are convenient for coordinates
-pub trait Coord = AddAssign<Self>
+pub trait Coord:
+	AddAssign<Self>
 	+ DivAssign<Self>
 	+ FromPrimitive
 	+ Real
 	+ Signed
 	+ SubAssign<Self>
 	+ MulAssign<Self>
-	+ std::iter::Sum;
+	+ std::iter::Sum
+{
+}
+
+impl<T> Coord for T where
+	T: AddAssign<Self>
+		+ DivAssign<Self>
+		+ FromPrimitive
+		+ Real
+		+ Signed
+		+ SubAssign<Self>
+		+ MulAssign<Self>
+		+ std::iter::Sum
+{
+}
 
 /// Undirected graph edge indexing its two nodes
 pub type Edge = (usize, usize);
